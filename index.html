@@ -3,183 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מתכנן ארוחות שבועי (ענן)</title>
+    <title>מתכנן ארוחות חכם</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; text-align: center; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 600px; background: white; margin: auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h1 { color: #2c3e50; }
-        button { padding: 12px 24px; margin: 10px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 6px; font-size: 16px; transition: background 0.3s; }
-        button:hover { background: #2980b9; }
-        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
-        .hidden { display: none; }
-        .meal-card { border: 1px solid #eee; padding: 20px; margin-top: 20px; border-radius: 10px; text-align: right; background: #fafafa; }
-        .meal-card img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; }
-        .meal-card h3 { margin-top: 0; color: #e67e22; }
-        #admin-panel { text-align: right; background: #ecf0f1; padding: 25px; border-radius: 10px; margin-top: 30px; border: 1px solid #bdc3c7; }
-        .admin-btn { background: #95a5a6; font-size: 14px; padding: 8px 16px; }
-        .admin-btn:hover { background: #7f8c8d; }
-        .danger-btn { background: #e74c3c; }
-        .danger-btn:hover { background: #c0392b; }
+        /* Modern CSS Variables for Light/Dark Mode */
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --border-color: #e2e8f0;
+            --danger: #ef4444;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        h1, h2 { color: var(--text-main); margin-top: 0; }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 16px 0;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover { background-color: var(--primary-hover); }
+        .danger-btn { background-color: var(--danger); }
+        
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .icon-btn {
+            background: none;
+            color: var(--text-main);
+            font-size: 24px;
+            padding: 8px;
+        }
+        .icon-btn:hover { background: var(--border-color); }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>מתכנן ארוחות בענן ☁️🍽️</h1>
-    
-    <div id="user-view">
-        <p>לחץ כדי להגריל ארוחות שלא הכנת לאחרונה</p>
-        <button onclick="randomizeMeals(1)">הגרל ארוחה אחת</button>
-        <button onclick="randomizeMeals(2)">הגרל שתי ארוחות</button>
-        <div id="results"></div>
+    <div class="header-controls">
+        <h1>מתכנן ארוחות חכם 🍽️</h1>
+        <div>
+            <button id="theme-toggle" class="icon-btn">🌙</button>
+            <button id="logout-btn" class="icon-btn hidden" onclick="logout()" title="התנתק">🚪</button>
+        </div>
     </div>
 
-    <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
-    <button class="admin-btn" onclick="toggleAdmin()">⚙️ כניסת מנהל</button>
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="card">
+        <h2>כניסת מנהל</h2>
+        <p style="color: var(--text-muted)">האפליקציה חסומה. אנא התחבר כדי להמשיך.</p>
+        <input type="email" id="login-email" placeholder="אימייל">
+        <input type="password" id="login-password" placeholder="סיסמה">
+        <button onclick="login()">התחבר</button>
+        <p id="login-error" style="color: var(--danger); margin-top: 10px;"></p>
+    </div>
 
-    <div id="admin-panel" class="hidden">
-        <h2>ניהול ארוחות</h2>
-        <label>שם הארוחה:</label>
-        <input type="text" id="meal-name" placeholder="לדוגמה: עוף בתנור עם תפוחי אדמה">
+    <!-- MAIN APP SCREEN (Hidden until logged in) -->
+    <div id="main-app" class="hidden">
         
-        <label>מתכון (מצרכים, שלבי הכנה):</label>
-        <textarea id="meal-recipe" rows="5" placeholder="הכנס מצרכים ואופן הכנה..."></textarea>
-        
-        <label>קישור לתמונה (URL):</label>
-        <input type="text" id="meal-image" placeholder="https://example.com/image.jpg">
-        
-        <button onclick="addMeal()">הוסף ארוחה למאגר</button>
+        <div class="card">
+            <h2>הגרלת ארוחות</h2>
+            <p style="color: var(--text-muted)">* פילטרים יתווספו בשלב 5</p>
+            <button>הגרל ארוחה</button>
+            <div id="results"></div>
+        </div>
 
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #ccc;">
-        
-        <h2>הגדרות זיכרון</h2>
-        <label>מספר ימים לזכור ארוחות (כדי לא לחזור עליהן):</label>
-        <input type="number" id="memory-days" value="7" min="0">
-        <button onclick="saveSettings()">שמור הגדרות</button>
-        <button class="danger-btn" onclick="clearHistory()">נקה היסטוריית הגרלות</button>
+        <div class="card">
+            <h2>ניהול מתכונים</h2>
+            <p style="color: var(--text-muted)">* הפרדת רכיבים ועריכה יתווספו בשלב 2</p>
+            <!-- Placeholder for Phase 2 Form -->
+        </div>
+
     </div>
 </div>
 
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 
 <script>
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDY1dl97i0-Des1CmHCb9wNA8jpmAIuNac",
-  authDomain: "mymeals-f5dc0.firebaseapp.com",
-  databaseURL: "https://mymeals-f5dc0-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "mymeals-f5dc0",
-  storageBucket: "mymeals-f5dc0.firebasestorage.app",
-  messagingSenderId: "533677624737",
-  appId: "1:533677624737:web:8821f04f8aa2a1a6998fe0",
-  measurementId: "G-1Y8SZCZ4GE"
-};
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyDY1dl97i0-Des1CmHCb9wNA8jpmAIuNac",
+      authDomain: "mymeals-f5dc0.firebaseapp.com",
+      databaseURL: "https://mymeals-f5dc0-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "mymeals-f5dc0",
+      storageBucket: "mymeals-f5dc0.firebasestorage.app",
+      messagingSenderId: "533677624737",
+      appId: "1:533677624737:web:8821f04f8aa2a1a6998fe0",
+      measurementId: "G-1Y8SZCZ4GE"
+    };
     
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.database();
 
-    // App State
-    let meals = [];
-    let history = [];
-    let memoryDays = 7;
+    // --- DARK MODE LOGIC ---
+    const themeToggle = document.getElementById('theme-toggle');
+    
+    // Check saved theme or system preference
+    if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.body.setAttribute('data-theme', 'dark');
+        themeToggle.innerText = '☀️';
+    }
 
-    // Listen for real-time updates from the database
-    db.ref('meals').on('value', snap => {
-        meals = [];
-        snap.forEach(child => { meals.push({ id: child.key, ...child.val() }); });
-    });
-
-    db.ref('history').on('value', snap => {
-        history = [];
-        snap.forEach(child => { history.push(child.val()); });
-    });
-
-    db.ref('memoryDays').on('value', snap => {
-        if(snap.val() !== null) {
-            memoryDays = snap.val();
-            document.getElementById('memory-days').value = memoryDays;
-        }
-    });
-
-    // Toggle admin panel
-    function toggleAdmin() {
-        const panel = document.getElementById('admin-panel');
-        if (panel.classList.contains('hidden')) {
-            if (prompt("אנא הכנס סיסמת מנהל:") === "1234") { 
-                panel.classList.remove('hidden');
-            } else {
-                alert("סיסמה שגויה");
-            }
+    themeToggle.addEventListener('click', () => {
+        if (document.body.getAttribute('data-theme') === 'dark') {
+            document.body.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+            themeToggle.innerText = '🌙';
         } else {
-            panel.classList.add('hidden');
+            document.body.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+            themeToggle.innerText = '☀️';
         }
-    }
+    });
 
-    // Database Writes
-    function addMeal() {
-        const name = document.getElementById('meal-name').value.trim();
-        const recipe = document.getElementById('meal-recipe').value.trim();
-        const image = document.getElementById('meal-image').value.trim();
+    // --- AUTHENTICATION LOGIC ---
+    const loginScreen = document.getElementById('login-screen');
+    const mainApp = document.getElementById('main-app');
+    const logoutBtn = document.getElementById('logout-btn');
+    const errorMsg = document.getElementById('login-error');
 
-        if (!name) return alert("חובה להזין לפחות את שם הארוחה.");
-
-        db.ref('meals').push({ name, recipe, image });
-        alert("הארוחה נוספה בהצלחה!");
-        
-        document.getElementById('meal-name').value = '';
-        document.getElementById('meal-recipe').value = '';
-        document.getElementById('meal-image').value = '';
-    }
-
-    function saveSettings() {
-        db.ref('memoryDays').set(parseInt(document.getElementById('memory-days').value) || 0);
-        alert("הגדרות הזיכרון נשמרו בענן!");
-    }
-
-    function clearHistory() {
-        if(confirm("האם אתה בטוח שברצונך לנקות את היסטוריית הארוחות?")) {
-            db.ref('history').remove();
-            alert("היסטוריית הארוחות נוקתה.");
+    // Watch for login state changes
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            // User is signed in
+            loginScreen.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            logoutBtn.classList.remove('hidden');
+        } else {
+            // User is signed out
+            loginScreen.classList.remove('hidden');
+            mainApp.classList.add('hidden');
+            logoutBtn.classList.add('hidden');
         }
+    });
+
+    function login() {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-password').value;
+        errorMsg.innerText = '';
+
+        auth.signInWithEmailAndPassword(email, pass)
+            .catch((error) => {
+                errorMsg.innerText = "שגיאה בהתחברות. ודא שאימייל והסיסמה נכונים.";
+                console.error(error);
+            });
     }
 
-    // Logic
-    function isMealValid(meal) {
-        const cutoffDate = Date.now() - (memoryDays * 24 * 60 * 60 * 1000);
-        const mealHistory = history.filter(h => h.id === meal.id);
-        if (mealHistory.length === 0) return true;
-        return Math.max(...mealHistory.map(h => h.timestamp)) < cutoffDate;
-    }
-
-    function randomizeMeals(count) {
-        if (meals.length === 0) return alert("אין ארוחות במאגר. אנא היכנס לפאנל המנהל והוסף ארוחות.");
-        
-        const validMeals = meals.filter(isMealValid);
-        if (validMeals.length < count) {
-            return alert(`אין מספיק ארוחות פנויות שלא הוגרלו ב-${memoryDays} הימים האחרונים.`);
-        }
-
-        const shuffled = [...validMeals].sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, count);
-
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = '';
-        
-        selected.forEach(m => {
-            // Write selection to cloud history
-            db.ref('history').push({ id: m.id, timestamp: Date.now() });
-
-            // Display
-            let html = `<div class="meal-card"><h3>${m.name}</h3>`;
-            if (m.recipe) html += `<p style="white-space: pre-wrap; line-height: 1.5;">${m.recipe}</p>`;
-            if (m.image) html += `<img src="${m.image}" alt="${m.name}">`;
-            html += `</div>`;
-            resultsDiv.innerHTML += html;
-        });
+    function logout() {
+        auth.signOut();
     }
 </script>
 </body>
