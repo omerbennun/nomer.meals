@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מתכנן ארוחות שבועי</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; text-align: center; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; background: white; margin: auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1 { color: #2c3e50; }
+        button { padding: 12px 24px; margin: 10px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 6px; font-size: 16px; transition: background 0.3s; }
+        button:hover { background: #2980b9; }
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+        .hidden { display: none; }
+        .meal-card { border: 1px solid #eee; padding: 20px; margin-top: 20px; border-radius: 10px; text-align: right; background: #fafafa; }
+        .meal-card img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; }
+        .meal-card h3 { margin-top: 0; color: #e67e22; }
+        #admin-panel { text-align: right; background: #ecf0f1; padding: 25px; border-radius: 10px; margin-top: 30px; border: 1px solid #bdc3c7; }
+        .admin-btn { background: #95a5a6; font-size: 14px; padding: 8px 16px; }
+        .admin-btn:hover { background: #7f8c8d; }
+        .danger-btn { background: #e74c3c; }
+        .danger-btn:hover { background: #c0392b; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>מתכנן ארוחות שבועי 🍽️</h1>
+    
+    <div id="user-view">
+        <p>לחץ כדי להגריל ארוחות שלא הכנת לאחרונה</p>
+        <button onclick="randomizeMeals(1)">הגרל ארוחה אחת</button>
+        <button onclick="randomizeMeals(2)">הגרל שתי ארוחות</button>
+        <div id="results"></div>
+    </div>
+
+    <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
+    <button class="admin-btn" onclick="toggleAdmin()">⚙️ כניסת מנהל</button>
+
+    <div id="admin-panel" class="hidden">
+        <h2>ניהול ארוחות</h2>
+        <label>שם הארוחה:</label>
+        <input type="text" id="meal-name" placeholder="לדוגמה: עוף בתנור עם תפוחי אדמה">
+        
+        <label>מתכון (מצרכים, שלבי הכנה):</label>
+        <textarea id="meal-recipe" rows="5" placeholder="הכנס מצרכים ואופן הכנה..."></textarea>
+        
+        <label>קישור לתמונה (URL):</label>
+        <input type="text" id="meal-image" placeholder="https://example.com/image.jpg">
+        
+        <button onclick="addMeal()">הוסף ארוחה למאגר</button>
+
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #ccc;">
+        
+        <h2>הגדרות זיכרון</h2>
+        <label>מספר ימים לזכור ארוחות (כדי לא לחזור עליהן):</label>
+        <input type="number" id="memory-days" value="7" min="0">
+        <button onclick="saveSettings()">שמור הגדרות</button>
+        <button class="danger-btn" onclick="clearHistory()">נקה היסטוריית הגרלות</button>
+    </div>
+</div>
+
+<script>
+    // Load state from browser's local storage
+    let meals = JSON.parse(localStorage.getItem('meals')) || [];
+    let history = JSON.parse(localStorage.getItem('mealHistory')) || [];
+    let memoryDays = parseInt(localStorage.getItem('memoryDays'));
+    if (isNaN(memoryDays)) memoryDays = 7;
+
+    document.getElementById('memory-days').value = memoryDays;
+
+    // Save current state to local storage
+    function saveState() {
+        localStorage.setItem('meals', JSON.stringify(meals));
+        localStorage.setItem('mealHistory', JSON.stringify(history));
+        localStorage.setItem('memoryDays', memoryDays);
+    }
+
+    // Toggle admin panel visibility with a simple password
+    function toggleAdmin() {
+        const panel = document.getElementById('admin-panel');
+        if (panel.classList.contains('hidden')) {
+            const pwd = prompt("אנא הכנס סיסמת מנהל:");
+            if (pwd === "1234") { 
+                panel.classList.remove('hidden');
+            } else if (pwd !== null) {
+                alert("סיסמה שגויה");
+            }
+        } else {
+            panel.classList.add('hidden');
+        }
+    }
+
+    // Add a new meal to the database
+    function addMeal() {
+        const name = document.getElementById('meal-name').value.trim();
+        const recipe = document.getElementById('meal-recipe').value.trim();
+        const image = document.getElementById('meal-image').value.trim();
+
+        if (!name) {
+            alert("חובה להזין לפחות את שם הארוחה.");
+            return;
+        }
+
+        meals.push({ id: Date.now(), name, recipe, image });
+        saveState();
+        alert("הארוחה נוספה בהצלחה!");
+        
+        document.getElementById('meal-name').value = '';
+        document.getElementById('meal-recipe').value = '';
+        document.getElementById('meal-image').value = '';
+    }
+
+    // Save memory timeframe setting
+    function saveSettings() {
+        memoryDays = parseInt(document.getElementById('memory-days').value) || 0;
+        saveState();
+        alert("הגדרות הזיכרון נשמרו!");
+    }
+
+    // Clear the tracking of recently chosen meals
+    function clearHistory() {
+        if(confirm("האם אתה בטוח שברצונך לנקות את היסטוריית הארוחות?")) {
+            history = [];
+            saveState();
+            alert("היסטוריית הארוחות נוקתה. כעת כל הארוחות זמינות להגרלה.");
+        }
+    }
+
+    // Check if a meal was cooked too recently based on the memory timeframe
+    function isMealValid(meal) {
+        const cutoffDate = Date.now() - (memoryDays * 24 * 60 * 60 * 1000);
+        const mealHistory = history.filter(h => h.id === meal.id);
+        
+        if (mealHistory.length === 0) return true;
+        
+        const lastCooked = Math.max(...mealHistory.map(h => h.timestamp));
+        return lastCooked < cutoffDate;
+    }
+
+    // Randomize and display meals
+    function randomizeMeals(count) {
+        if (meals.length === 0) {
+            alert("אין ארוחות במאגר. אנא היכנס לפאנל המנהל והוסף ארוחות חדשות.");
+            return;
+        }
+
+        const validMeals = meals.filter(isMealValid);
+        if (validMeals.length < count) {
+            alert(`אין מספיק ארוחות פנויות שלא הוגרלו ב-${memoryDays} הימים האחרונים. הוסף ארוחות חדשות או נקה את ההיסטוריה.`);
+            return;
+        }
+
+        // Shuffle array safely
+        const shuffled = [...validMeals].sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, count);
+
+        // Record selection in history
+        selected.forEach(m => {
+            history.push({ id: m.id, timestamp: Date.now() });
+        });
+        saveState();
+
+        // Display the results
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '';
+        
+        selected.forEach(m => {
+            let html = `<div class="meal-card">
+                <h3>${m.name}</h3>`;
+            if (m.recipe) html += `<p style="white-space: pre-wrap; line-height: 1.5;">${m.recipe}</p>`;
+            if (m.image) html += `<img src="${m.image}" alt="${m.name}">`;
+            html += `</div>`;
+            resultsDiv.innerHTML += html;
+        });
+    }
+</script>
+</body>
+</html>
