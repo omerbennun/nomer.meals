@@ -10,11 +10,10 @@ const firebaseConfig = {
   measurementId: "G-1Y8SZCZ4GE"
 };
 
-// Initialize Firebase
+// Initialize Firebase (Only Auth and Database needed now!)
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
-const storage = firebase.storage();
 
 let currentMeals = {};
 let mealsArray = [];
@@ -89,37 +88,51 @@ db.ref('meals').on('value', (snapshot) => {
     }
 });
 
-// --- SAVE MEAL (WITH FIREBASE STORAGE IMAGE UPLOAD) ---
-async function saveMeal() {
+// --- SAVE MEAL (WITH BASE64 IMAGE ENCODING) ---
+function saveMeal() {
     const id = document.getElementById('meal-id').value;
+    const name = document.getElementById('meal-name').value.trim();
+    const ingredients = document.getElementById('meal-ingredients').value.trim();
+    const instructions = document.getElementById('meal-instructions').value.trim();
     const fileInput = document.getElementById('meal-image-file');
-    let imageUrl = document.getElementById('meal-image-url').value;
+    let existingImage = document.getElementById('meal-image-url').value;
 
-    // If a new photo file is selected, upload it to Firebase Storage
-    if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const storageRef = storage.ref('meals/' + Date.now() + '_' + file.name);
-        const snapshot = await storageRef.put(file);
-        imageUrl = await snapshot.ref.getDownloadURL();
-    }
+    if (!name) return alert("חובה להזין את שם הארוחה.");
 
-    const mealData = {
-        name: document.getElementById('meal-name').value.trim(),
-        ingredients: document.getElementById('meal-ingredients').value.trim(),
-        instructions: document.getElementById('meal-instructions').value.trim(),
-        image: imageUrl
+    // Function to push or update data in Firebase Realtime Database
+    const commitToDatabase = (imageData) => {
+        const mealData = {
+            name: name,
+            ingredients: ingredients,
+            instructions: instructions,
+            image: imageData || ""
+        };
+
+        if (id) {
+            db.ref(`meals/${id}`).update(mealData);
+            alert("הארוחה עודכנה בהצלחה!");
+        } else {
+            db.ref('meals').push(mealData);
+            alert("ארוחה חדשה נוספה בהצלחה!");
+        }
+        resetForm();
     };
 
-    if (!mealData.name) return alert("חובה להזין את שם הארוחה.");
-
-    if (id) {
-        db.ref(`meals/${id}`).update(mealData);
-        alert("הארוחה עודכנה בהצלחה!");
+    // If a new file was chosen, read it as a Base64 string first
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const base64String = e.target.result;
+            commitToDatabase(base64String);
+        };
+        
+        reader.readAsDataURL(file);
     } else {
-        db.ref('meals').push(mealData);
-        alert("ארוחה חדשה נוספה בהצלחה!");
+        // Keep existing image if no new file was selected during editing
+        commitToDatabase(existingImage);
     }
-    resetForm();
 }
 
 function editMeal(id) {
@@ -129,6 +142,7 @@ function editMeal(id) {
     document.getElementById('meal-ingredients').value = meal.ingredients || '';
     document.getElementById('meal-instructions').value = meal.instructions || '';
     document.getElementById('meal-image-url').value = meal.image || '';
+    document.getElementById('meal-image-file').value = ''; // Clear file picker
     
     document.getElementById('form-title').innerText = 'עריכת מתכון';
     document.getElementById('save-btn').innerText = 'עדכן ארוחה';
