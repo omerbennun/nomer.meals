@@ -160,21 +160,21 @@ function resetForm() {
     document.getElementById('cancel-btn').classList.add('hidden');
 }
 
-// --- SMARTER HEBREW INGREDIENT PARSER & AGGREGATOR ---
+// --- UNIFIED HEBREW INGREDIENT DICTIONARY (Pantry & Spices First) ---
 const ingredientDictionary = {
-    "ירקות ופירות": ["עגבנייה", "עגבניות", "בצל", "שום", "גזר", "מלפפון", "תפוח אדמה", "פלפל", "לימון", "לימונים", "פטרוזיליה", "כוסברה", "חסה", "קישוא", "חציל", "בטטה", "אבוקדו", "סלרי", "סלק"],
+    "מזווה ויבשים": ["רסק עגבניות", "עגבניות מרוסקות", "פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות", "חומוס", "אבקת אפיה"],
+    "תבלינים ורטבים": ["פלפל שחור", "פלפל שחור גרוס", "מלח", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"],
     "בשר, עוף ודגים": ["בקר", "עוף", "חזה עוף", "טחינה", "סלמון", "דג", "בשר טחון", "הודו", "קציצות", "שניצל"],
     "מוצרי חלב וביצים": ["חלב", "ביצים", "ביצה", "גבינה", "חמאה", "שמנת", "יוגורט", "קוטג'", "גבינה צהובה"],
-    "מזווה ויבשים": ["פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "רסק עגבניות", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות", "חומוס", "אבקת אפיה"],
-    "תבלינים ורטבים": ["מלח", "פלפל", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"]
+    "ירקות ופירות": ["עגבנייה", "עגבניות", "בצל", "שום", "גזר", "מלפפון", "תפוח אדמה", "פלפל", "לימון", "לימונים", "פטרוזיליה", "כוסברה", "חסה", "קישוא", "חציל", "בטטה", "אבוקדו", "סלרי", "סלק"]
 };
 
-// --- HEBREW NUMBER & UNIT PARSER (WITH UNIT PRESERVATION) ---
 function parseHebrewQuantityAndUnit(line) {
     let qty = 1;
     let unit = '';
     let cleanName = line;
 
+    // Expanded number words including masculine/feminine variations
     const wordNumbers = {
         'חצי': 0.5,
         'רבע': 0.25,
@@ -199,19 +199,15 @@ function parseHebrewQuantityAndUnit(line) {
         'עשרה': 10
     };
 
-    // Common measurement units in Hebrew recipes to preserve
     const knownUnits = ['ק״ג', 'קג', 'גרם', 'מ״ל', 'מל', 'ליטר', 'כוסות', 'כוס', 'כפות', 'כף', 'כפיות', 'כפית', 'שיני', 'שן', 'חבילת', 'חבילה', 'צרור', 'קופסת', 'קופסה'];
 
     const words = line.trim().split(/\s+/);
     if (words.length > 0) {
         const firstWord = words[0];
-
-        // Check for numeric words first
         if (wordNumbers[firstWord] !== undefined) {
             qty = wordNumbers[firstWord];
             cleanName = words.slice(1).join(' ');
         } else {
-            // Check for digits
             const numericMatch = firstWord.match(/^([0-9]+(?:\.[0-9]+)?)/);
             if (numericMatch) {
                 qty = parseFloat(numericMatch[1]) || 1;
@@ -220,16 +216,15 @@ function parseHebrewQuantityAndUnit(line) {
         }
     }
 
-    // Extract unit if the next word matches a known unit
     const remainingWords = cleanName.trim().split(/\s+/);
     if (remainingWords.length > 0 && knownUnits.includes(remainingWords[0])) {
         unit = remainingWords[0];
         cleanName = remainingWords.slice(1).join(' ');
     }
 
-    // Clean up descriptive modifiers from the item name
+    // Clean up descriptive modifiers and preparation notes
     cleanName = cleanName
-        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים/g, '')
+        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים|לפי הטעם/g, '')
         .replace(/['"״׳]/g, '')
         .trim();
 
@@ -267,22 +262,22 @@ function categorizeAndAggregate(rawLines) {
 
     const instructionBlacklist = [
         "לטחון", "לסנן", "להוסיף", "ללוש", "להכניס", "לרוטב", "בסיר", 
-        "נטגן", "נחמם", "נבשל", "לשפוך", "לערבב", "–", "-"
+        "נטגן", "נחמם", "נבשל", "לשפוך", "לערבב"
     ];
 
     rawLines.forEach(line => {
         if (!line) return;
         
+        // Skip headers ending with colon (e.g., "לרוטב:", "מצרכים:"), bullet dashes, or instructions
+        if (line.endsWith(':') || line.startsWith('–') || line.startsWith('-')) return;
         if (instructionBlacklist.some(word => line.includes(word) && line.length > 15)) return;
-        if (line.startsWith('–') || line.startsWith('-') || line.includes('הוראות')) return;
 
-        // Parse quantity words/units and get clean name
         const parsed = parseHebrewQuantityAndUnit(line);
-        let canonicalKey = normalizeIngredientName(parsed.cleanName);
+        let itemName = parsed.cleanName;
         
-        if (!canonicalKey || canonicalKey.length < 2) return;
+        if (!itemName || itemName.length < 2) return;
 
-        // Categorize based on dictionary keywords
+        // Categorize based on dictionary keywords (Pantry/Spices evaluated first)
         let assignedCategory = "שונות";
         for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
             if (keywords.some(kw => line.includes(kw))) {
@@ -291,13 +286,16 @@ function categorizeAndAggregate(rawLines) {
             }
         }
 
-        // Aggregate quantities
-        if (categories[assignedCategory][canonicalKey]) {
-            categories[assignedCategory][canonicalKey].qty += parsed.qty;
+        // Aggregate by clean item name
+        if (categories[assignedCategory][itemName]) {
+            categories[assignedCategory][itemName].qty += parsed.qty;
+            if (!categories[assignedCategory][itemName].unit && parsed.unit) {
+                categories[assignedCategory][itemName].unit = parsed.unit;
+            }
         } else {
-            categories[assignedCategory][canonicalKey] = {
-                originalText: parsed.cleanName,
-                qty: parsed.qty
+            categories[assignedCategory][itemName] = {
+                qty: parsed.qty,
+                unit: parsed.unit
             };
         }
     });
