@@ -30,17 +30,22 @@
     <!-- MAIN APP SCREEN -->
     <div id="main-app" class="hidden">
         
+        <!-- Randomizer Section -->
         <div class="card">
             <h2>הגרלת ארוחות</h2>
-            <button onclick="randomizeMeals(1)">הגרל ארוחה אחת</button>
-            <button onclick="randomizeMeals(2)">הגרל שתי ארוחות</button>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button onclick="randomizeMeals(1)">הגרל ארוחה 1</button>
+                <button onclick="randomizeMeals(3)">הגרל 3 ארוחות</button>
+                <button onclick="randomizeMeals(5)">הגרל 5 ארוחות</button>
+            </div>
+            
             <div id="results"></div>
-            <!-- Inside index.html, replace the shopping list section with this: -->
+
+            <!-- Make sure this ID matches: shopping-list-container -->
             <div id="shopping-list-section" class="hidden" style="margin-top: 20px; padding: 20px; background: var(--bg-color); border-radius: 8px; border: 1px dashed var(--border-color);">
                 <h3 style="margin-top:0;">🛒 רשימת קניות מסודרת לפי קטגוריות:</h3>
                 <div id="shopping-list-container"></div>
             </div>
-</div>
         </div>
 
         <div class="card">
