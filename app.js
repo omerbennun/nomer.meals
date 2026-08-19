@@ -306,10 +306,14 @@ function randomizeMeals(count) {
                             <strong style="color: var(--primary);">${catName}:</strong>
                             <ul style="margin: 5px 0 0 0; padding-right: 20px;">`;
             
-            for (const [item, qty] of Object.entries(items)) {
-                // If qty is greater than 1, display it nicely
-                const displayQty = qty > 1 ? `(${qty}) ` : '';
-                catHtml += `<li>${displayQty}${item}</li>`;
+            for (const [item, data] of Object.entries(items)) {
+                let qtyStr = '';
+                if (data.qty === 0.5) qtyStr = 'חצי ';
+                else if (data.qty === 0.25) qtyStr = 'רבע ';
+                else qtyStr = `${data.qty} `; // Prints 1, 2, 4, etc.
+
+                const unitStr = data.unit ? `${data.unit} ` : '';
+                catHtml += `<li>${qtyStr}${unitStr}${item}</li>`;
             }
             
             catHtml += `</ul></div>`;
