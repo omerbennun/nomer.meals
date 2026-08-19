@@ -35,9 +35,11 @@
             <button onclick="randomizeMeals(1)">הגרל ארוחה אחת</button>
             <button onclick="randomizeMeals(2)">הגרל שתי ארוחות</button>
             <div id="results"></div>
-            <div id="shopping-list-section" class="hidden" style="margin-top: 20px; padding: 15px; background: var(--bg-color); border-radius: 8px; border: 1px dashed var(--border-color);">
-            <h3>🛒 רשימת קניות נדרשת:</h3>
-            <ul id="shopping-list-items" style="margin: 0; padding-right: 20px; line-height: 1.6;"></ul>
+            <!-- Inside index.html, replace the shopping list section with this: -->
+            <div id="shopping-list-section" class="hidden" style="margin-top: 20px; padding: 20px; background: var(--bg-color); border-radius: 8px; border: 1px dashed var(--border-color);">
+                <h3 style="margin-top:0;">🛒 רשימת קניות מסודרת לפי קטגוריות:</h3>
+                <div id="shopping-list-container"></div>
+            </div>
 </div>
         </div>
 

@@ -10,7 +10,6 @@ const firebaseConfig = {
   measurementId: "G-1Y8SZCZ4GE"
 };
 
-// Initialize Firebase (Only Auth and Database needed now!)
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
@@ -88,7 +87,7 @@ db.ref('meals').on('value', (snapshot) => {
     }
 });
 
-// --- SAVE MEAL (WITH BASE64 IMAGE ENCODING) ---
+// --- SAVE MEAL ---
 function saveMeal() {
     const id = document.getElementById('meal-id').value;
     const name = document.getElementById('meal-name').value.trim();
@@ -99,7 +98,6 @@ function saveMeal() {
 
     if (!name) return alert("חובה להזין את שם הארוחה.");
 
-    // Function to push or update data in Firebase Realtime Database
     const commitToDatabase = (imageData) => {
         const mealData = {
             name: name,
@@ -118,19 +116,12 @@ function saveMeal() {
         resetForm();
     };
 
-    // If a new file was chosen, read it as a Base64 string first
     if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            const base64String = e.target.result;
-            commitToDatabase(base64String);
-        };
-        
+        reader.onload = function(e) { commitToDatabase(e.target.result); };
         reader.readAsDataURL(file);
     } else {
-        // Keep existing image if no new file was selected during editing   
         commitToDatabase(existingImage);
     }
 }
@@ -142,7 +133,7 @@ function editMeal(id) {
     document.getElementById('meal-ingredients').value = meal.ingredients || '';
     document.getElementById('meal-instructions').value = meal.instructions || '';
     document.getElementById('meal-image-url').value = meal.image || '';
-    document.getElementById('meal-image-file').value = ''; // Clear file picker
+    document.getElementById('meal-image-file').value = '';
     
     document.getElementById('form-title').innerText = 'עריכת מתכון';
     document.getElementById('save-btn').innerText = 'עדכן ארוחה';
@@ -169,6 +160,60 @@ function resetForm() {
     document.getElementById('cancel-btn').classList.add('hidden');
 }
 
+// --- HEBREW INGREDIENT DICTIONARY & SMART PARSER ---
+const ingredientDictionary = {
+    "ירקות ופירות": ["עגבנייה", "עגבניות", "בצל", "שום", "גזר", "מלפפון", "תפוח אדמה", "פלפל", "לימון", "לימונים", "פטרוזיליה", "כוסברה", "חסה", "קישוא", "חציל", "בטטה", "אבוקדו", "בצל ירוק", "שרי"],
+    "בשר, עוף ודגים": ["בקר", "עוף", "חזה עוף", "טחינה", "סלמון", "דג", "בשר טחון", "הודו", "קציצות", "שניצל"],
+    "מוצרי חלב וביצים": ["חלב", "ביצים", "ביצה", "גבינה", "חמאה", "שמנת", "יוגורט", "קוטג'", "גבינה צהובה"],
+    "מזווה ויבשים": ["פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "רסק עגבניות", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות"],
+    "תבלינים ורטבים": ["מלח", "פלפל שחור", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"]
+};
+
+function categorizeAndAggregate(rawLines) {
+    // Map categories to objects storing aggregated quantities
+    const categories = {
+        "ירקות ופירות": {},
+        "בשר, עוף ודגים": {},
+        "מוצרי חלב וביצים": {},
+        "מזווה ויבשים": {},
+        "תבלינים ורטבים": {},
+        "שונות (למיון ידני)": {}
+    };
+
+    rawLines.forEach(line => {
+        if (!line) return;
+        
+        // Try to extract leading number if present (e.g. "2 עגבניות" -> qty: 2, name: "עגבניות")
+        let qty = 1;
+        let cleanName = line;
+        
+        const match = line.match(/^([0-9]+(?:\.[0-9]+)?|\/[0-9]+)?\s*(.*)$/);
+        if (match && match[1]) {
+            qty = parseFloat(match[1]) || 1;
+            cleanName = match[2].trim();
+        }
+
+        // Determine category based on dictionary keywords
+        let assignedCategory = "שונות (למיון ידני)";
+        for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
+            if (keywords.some(kw => line.includes(kw))) {
+                assignedCategory = cat;
+                break;
+            }
+        }
+
+        // Aggregate duplicates by normalized clean name
+        const key = cleanName;
+        if (categories[assignedCategory][key]) {
+            categories[assignedCategory][key] += qty;
+        } else {
+            categories[assignedCategory][key] = qty;
+        }
+    });
+
+    return categories;
+}
+
 // --- RANDOMIZER & SMART SHOPPING LIST ---
 function randomizeMeals(count) {
     if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
@@ -178,24 +223,20 @@ function randomizeMeals(count) {
 
     const resultsDiv = document.getElementById('results');
     const shoppingListSection = document.getElementById('shopping-list-section');
-    const shoppingListItems = document.getElementById('shopping-list-items');
+    const shoppingListContainer = document.getElementById('shopping-list-container');
     
     resultsDiv.innerHTML = '';
-    shoppingListItems.innerHTML = '';
+    shoppingListContainer.innerHTML = '';
     
-    let allIngredients = [];
+    let allRawLines = [];
 
     selected.forEach(m => {
         let html = `<div class="meal-card">
                         <h3>${m.name}</h3>`;
         if (m.ingredients) {
             html += `<strong>מצרכים:</strong><br><p style="white-space: pre-wrap; margin-top:5px;">${m.ingredients}</p>`;
-            
-            // Extract ingredients line by line for the shopping list
-            const lines = m.ingredients.split('\n');
-            lines.forEach(line => {
-                const cleaned = line.trim();
-                if (cleaned) allIngredients.push(cleaned);
+            m.ingredients.split('\n').forEach(line => {
+                if (line.trim()) allRawLines.push(line.trim());
             });
         }
         if (m.instructions) html += `<strong>הוראות הכנה:</strong><br><p style="white-space: pre-wrap; margin-top:5px;">${m.instructions}</p>`;
@@ -204,16 +245,34 @@ function randomizeMeals(count) {
         resultsDiv.innerHTML += html;
     });
 
-    // Populate shopping list if ingredients exist
-    if (allIngredients.length > 0) {
-        // Remove exact duplicates if any
-        const uniqueIngredients = [...new Set(allIngredients)];
-        
-        uniqueIngredients.forEach(item => {
-            shoppingListItems.innerHTML += `<li>${item}</li>`;
-        });
-        
-        shoppingListSection.classList.remove('hidden');
+    if (allRawLines.length > 0) {
+        const categorized = categorizeAndAggregate(allRawLines);
+        let hasItems = false;
+
+        for (const [catName, items] of Object.entries(categorized)) {
+            const itemKeys = Object.keys(items);
+            if (itemKeys.length === 0) continue;
+            
+            hasItems = true;
+            let catHtml = `<div style="margin-bottom: 15px;">
+                            <strong style="color: var(--primary);">${catName}:</strong>
+                            <ul style="margin: 5px 0 0 0; padding-right: 20px;">`;
+            
+            for (const [item, qty] of Object.entries(items)) {
+                // If qty is greater than 1, display it nicely
+                const displayQty = qty > 1 ? `(${qty}) ` : '';
+                catHtml += `<li>${displayQty}${item}</li>`;
+            }
+            
+            catHtml += `</ul></div>`;
+            shoppingListContainer.innerHTML += catHtml;
+        }
+
+        if (hasItems) {
+            shoppingListSection.classList.remove('hidden');
+        } else {
+            shoppingListSection.classList.add('hidden');
+        }
     } else {
         shoppingListSection.classList.add('hidden');
     }
