@@ -1,0 +1,89 @@
+:root {
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --border-color: #e2e8f0;
+    --danger: #ef4444;
+}
+
+[data-theme="dark"] {
+    --bg-color: #0f172a;
+    --card-bg: #1e293b;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --primary: #3b82f6;
+    --border-color: #334155;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    margin: 0;
+    padding: 20px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.container { max-width: 800px; margin: 0 auto; }
+
+.card {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+}
+
+h1, h2, h3 { color: var(--text-main); margin-top: 0; }
+
+input, textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0 16px 0;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+button {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover { background-color: var(--primary-hover); }
+.danger-btn { background-color: var(--danger); }
+.cancel-btn { background-color: var(--text-muted); }
+
+.header-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.icon-btn { background: none; color: var(--text-main); font-size: 24px; padding: 8px; cursor: pointer; }
+.icon-btn:hover { background: var(--border-color); border-radius: 6px; }
+
+.hidden { display: none !important; }
+.text-muted { color: var(--text-muted); }
+.error-text { color: var(--danger); margin-top: 10px; }
+
+.meal-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+.meal-list-item:last-child { border-bottom: none; }
+.meal-actions button { padding: 6px 12px; font-size: 14px; margin-right: 5px; }
+
+.meal-card { border: 1px solid var(--border-color); padding: 20px; margin-top: 20px; border-radius: 10px; background: var(--bg-color); text-align: right; }
+.meal-card img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; }

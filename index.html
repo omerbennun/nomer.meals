@@ -4,98 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מתכנן ארוחות חכם</title>
-    <style>
-        /* Modern CSS Variables for Light/Dark Mode */
-        :root {
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --border-color: #e2e8f0;
-            --danger: #ef4444;
-            --success: #10b981;
-        }
-
-        [data-theme="dark"] {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
-            --primary: #3b82f6;
-            --border-color: #334155;
-        }
-
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        .container { max-width: 800px; margin: 0 auto; }
-        
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            border: 1px solid var(--border-color);
-        }
-
-        h1, h2, h3 { color: var(--text-main); margin-top: 0; }
-        
-        input, textarea {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0 16px 0;
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-family: inherit;
-        }
-
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        button:hover { background-color: var(--primary-hover); }
-        .danger-btn { background-color: var(--danger); }
-        .cancel-btn { background-color: var(--text-muted); }
-        
-        .header-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .icon-btn { background: none; color: var(--text-main); font-size: 24px; padding: 8px; }
-        .icon-btn:hover { background: var(--border-color); }
-        .hidden { display: none !important; }
-
-        /* Meal Library Styles */
-        .meal-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .meal-list-item:last-child { border-bottom: none; }
-        .meal-actions button { padding: 6px 12px; font-size: 14px; margin-right: 5px; }
-        
-        /* Randomized Meal Result Styles */
-        .meal-card { border: 1px solid var(--border-color); padding: 20px; margin-top: 20px; border-radius: 10px; background: var(--bg-color); }
-        .meal-card img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -111,11 +20,11 @@
     <!-- LOGIN SCREEN -->
     <div id="login-screen" class="card">
         <h2>כניסת מנהל</h2>
-        <p style="color: var(--text-muted)">האפליקציה חסומה. אנא התחבר כדי להמשיך.</p>
+        <p class="text-muted">האפליקציה חסומה. אנא התחבר כדי להמשיך.</p>
         <input type="email" id="login-email" placeholder="אימייל">
         <input type="password" id="login-password" placeholder="סיסמה">
         <button onclick="login()">התחבר</button>
-        <p id="login-error" style="color: var(--danger); margin-top: 10px;"></p>
+        <p id="login-error" class="error-text"></p>
     </div>
 
     <!-- MAIN APP SCREEN -->
@@ -130,8 +39,7 @@
 
         <div class="card">
             <h2 id="form-title">הוספת מתכון חדש</h2>
-            
-            <input type="hidden" id="meal-id"> <!-- Hidden field for tracking edits -->
+            <input type="hidden" id="meal-id">
             
             <label>שם הארוחה:</label>
             <input type="text" id="meal-name" placeholder="לדוגמה: פסטה ברוטב עגבניות">
@@ -142,8 +50,9 @@
             <label>הוראות הכנה:</label>
             <textarea id="meal-instructions" rows="4" placeholder="1. הרתיחו מים..."></textarea>
             
-            <label>קישור לתמונה (URL):</label>
-            <input type="text" id="meal-image" placeholder="https://example.com/image.jpg">
+            <label>תמונת הארוחה (העלאת קובץ):</label>
+            <input type="file" id="meal-image-file" accept="image/*">
+            <input type="hidden" id="meal-image-url">
             
             <button id="save-btn" onclick="saveMeal()">שמור ארוחה</button>
             <button id="cancel-btn" class="cancel-btn hidden" onclick="resetForm()">ביטול עריכה</button>
@@ -151,9 +60,7 @@
 
         <div class="card">
             <h2>ספריית ארוחות</h2>
-            <div id="meals-library">
-                <!-- Meal list will populate here -->
-            </div>
+            <div id="meals-library"></div>
         </div>
 
     </div>
@@ -163,183 +70,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
 
-<script>
-    // Your web app's Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyDY1dl97i0-Des1CmHCb9wNA8jpmAIuNac",
-      authDomain: "mymeals-f5dc0.firebaseapp.com",
-      databaseURL: "https://mymeals-f5dc0-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "mymeals-f5dc0",
-      storageBucket: "mymeals-f5dc0.firebasestorage.app",
-      messagingSenderId: "533677624737",
-      appId: "1:533677624737:web:8821f04f8aa2a1a6998fe0",
-      measurementId: "G-1Y8SZCZ4GE"
-    };
-    
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-
-    // App State Variables
-    let currentMeals = {}; // Stores the raw object from Firebase
-    let mealsArray = [];   // Stores the array version for the randomizer
-
-    // --- DARK MODE LOGIC ---
-    const themeToggle = document.getElementById('theme-toggle');
-    if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.body.setAttribute('data-theme', 'dark');
-        themeToggle.innerText = '☀️';
-    }
-    themeToggle.addEventListener('click', () => {
-        if (document.body.getAttribute('data-theme') === 'dark') {
-            document.body.removeAttribute('data-theme');
-            localStorage.setItem('theme', 'light');
-            themeToggle.innerText = '🌙';
-        } else {
-            document.body.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark');
-            themeToggle.innerText = '☀️';
-        }
-    });
-
-    // --- AUTHENTICATION LOGIC ---
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('main-app').classList.remove('hidden');
-            document.getElementById('logout-btn').classList.remove('hidden');
-        } else {
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('main-app').classList.add('hidden');
-            document.getElementById('logout-btn').classList.add('hidden');
-        }
-    });
-
-    function login() {
-        const email = document.getElementById('login-email').value;
-        const pass = document.getElementById('login-password').value;
-        document.getElementById('login-error').innerText = '';
-        auth.signInWithEmailAndPassword(email, pass).catch((error) => {
-            document.getElementById('login-error').innerText = "שגיאה בהתחברות. ודא שאימייל והסיסמה נכונים.";
-        });
-    }
-
-    function logout() { auth.signOut(); }
-
-    // --- DATABASE & MEAL LOGIC ---
-
-    // Real-time listener for the meals database
-    db.ref('meals').on('value', (snapshot) => {
-        currentMeals = snapshot.val() || {};
-        mealsArray = [];
-        const libraryDiv = document.getElementById('meals-library');
-        libraryDiv.innerHTML = '';
-
-        if (Object.keys(currentMeals).length === 0) {
-            libraryDiv.innerHTML = '<p style="color: var(--text-muted)">אין ארוחות במאגר.</p>';
-            return;
-        }
-
-        // Populate library list and array
-        for (const id in currentMeals) {
-            const meal = currentMeals[id];
-            mealsArray.push({ id, ...meal }); // Keep array updated for randomizer
-            
-            libraryDiv.innerHTML += `
-                <div class="meal-list-item">
-                    <strong>${meal.name}</strong>
-                    <div class="meal-actions">
-                        <button onclick="editMeal('${id}')">ערוך</button>
-                        <button class="danger-btn" onclick="deleteMeal('${id}')">מחק</button>
-                    </div>
-                </div>
-            `;
-        }
-    });
-
-    // Save or Update Meal
-    function saveMeal() {
-        const id = document.getElementById('meal-id').value;
-        const mealData = {
-            name: document.getElementById('meal-name').value.trim(),
-            ingredients: document.getElementById('meal-ingredients').value.trim(),
-            instructions: document.getElementById('meal-instructions').value.trim(),
-            image: document.getElementById('meal-image').value.trim()
-        };
-
-        if (!mealData.name) return alert("חובה להזין את שם הארוחה.");
-
-        if (id) {
-            // Updating existing meal
-            db.ref(`meals/${id}`).update(mealData);
-            alert("הארוחה עודכנה בהצלחה!");
-        } else {
-            // Adding new meal
-            db.ref('meals').push(mealData);
-            alert("ארוחה חדשה נוספה בהצלחה!");
-        }
-        resetForm();
-    }
-
-    // Load meal into form for editing
-    function editMeal(id) {
-        const meal = currentMeals[id];
-        document.getElementById('meal-id').value = id;
-        document.getElementById('meal-name').value = meal.name || '';
-        document.getElementById('meal-ingredients').value = meal.ingredients || '';
-        document.getElementById('meal-instructions').value = meal.instructions || '';
-        document.getElementById('meal-image').value = meal.image || '';
-        
-        document.getElementById('form-title').innerText = 'עריכת מתכון';
-        document.getElementById('save-btn').innerText = 'עדכן ארוחה';
-        document.getElementById('cancel-btn').classList.remove('hidden');
-        
-        // Scroll to top of the form smoothly
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // Delete meal
-    function deleteMeal(id) {
-        if (confirm("האם אתה בטוח שברצונך למחוק ארוחה זו?")) {
-            db.ref(`meals/${id}`).remove();
-        }
-    }
-
-    // Clear form
-    function resetForm() {
-        document.getElementById('meal-id').value = '';
-        document.getElementById('meal-name').value = '';
-        document.getElementById('meal-ingredients').value = '';
-        document.getElementById('meal-instructions').value = '';
-        document.getElementById('meal-image').value = '';
-        
-        document.getElementById('form-title').innerText = 'הוספת מתכון חדש';
-        document.getElementById('save-btn').innerText = 'שמור ארוחה';
-        document.getElementById('cancel-btn').classList.add('hidden');
-    }
-
-    // Simple Randomizer (Temporary until Phase 5 filters)
-    function randomizeMeals(count) {
-        if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
-        
-        const shuffled = [...mealsArray].sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, count);
-
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = '';
-        
-        selected.forEach(m => {
-            let html = `<div class="meal-card">
-                            <h3>${m.name}</h3>`;
-            if (m.ingredients) html += `<strong>מצרכים:</strong><br><p style="white-space: pre-wrap; margin-top:5px;">${m.ingredients}</p>`;
-            if (m.instructions) html += `<strong>הוראות הכנה:</strong><br><p style="white-space: pre-wrap; margin-top:5px;">${m.instructions}</p>`;
-            if (m.image) html += `<img src="${m.image}" alt="${m.name}">`;
-            html += `</div>`;
-            resultsDiv.innerHTML += html;
-        });
-    }
-</script>
+<!-- Main Logic -->
+<script src="app.js"></script>
 </body>
 </html>
