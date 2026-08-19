@@ -169,12 +169,12 @@ const ingredientDictionary = {
     "תבלינים ורטבים": ["מלח", "פלפל", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"]
 };
 
-// --- HEBREW NUMBER & UNIT PARSER ---
+// --- HEBREW NUMBER & UNIT PARSER (WITH UNIT PRESERVATION) ---
 function parseHebrewQuantityAndUnit(line) {
     let qty = 1;
+    let unit = '';
     let cleanName = line;
 
-    // Map Hebrew number words to values
     const wordNumbers = {
         'חצי': 0.5,
         'רבע': 0.25,
@@ -190,23 +190,28 @@ function parseHebrewQuantityAndUnit(line) {
         'חמש': 5,
         'חמישה': 5,
         'שש': 6,
-        'ששש': 6,
+        'שישה': 6,
         'שבע': 7,
+        'שבעה': 7,
         'שמונה': 8,
         'תשע': 9,
-        'עשר': 10
+        'עשר': 10,
+        'עשרה': 10
     };
 
-    // Check if line starts with a number word or digit
+    // Common measurement units in Hebrew recipes to preserve
+    const knownUnits = ['ק״ג', 'קג', 'גרם', 'מ״ל', 'מל', 'ליטר', 'כוסות', 'כוס', 'כפות', 'כף', 'כפיות', 'כפית', 'שיני', 'שן', 'חבילת', 'חבילה', 'צרור', 'קופסת', 'קופסה'];
+
     const words = line.trim().split(/\s+/);
     if (words.length > 0) {
         const firstWord = words[0];
-        const secondWord = words[1] || '';
 
+        // Check for numeric words first
         if (wordNumbers[firstWord] !== undefined) {
             qty = wordNumbers[firstWord];
             cleanName = words.slice(1).join(' ');
         } else {
+            // Check for digits
             const numericMatch = firstWord.match(/^([0-9]+(?:\.[0-9]+)?)/);
             if (numericMatch) {
                 qty = parseFloat(numericMatch[1]) || 1;
@@ -215,14 +220,20 @@ function parseHebrewQuantityAndUnit(line) {
         }
     }
 
-    // Clean up units and descriptor words from the item name
+    // Extract unit if the next word matches a known unit
+    const remainingWords = cleanName.trim().split(/\s+/);
+    if (remainingWords.length > 0 && knownUnits.includes(remainingWords[0])) {
+        unit = remainingWords[0];
+        cleanName = remainingWords.slice(1).join(' ');
+    }
+
+    // Clean up descriptive modifiers from the item name
     cleanName = cleanName
-        .replace(/ק״ג|קג|גרם|מ״ל|מל|ליטר|כוסות|כוס|כפות|כף|כפיות|כפית|שיני|שן|חבילת|חבילה|צרור|קופסת|קופסה/g, '')
         .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים/g, '')
         .replace(/['"״׳]/g, '')
         .trim();
 
-    return { qty, cleanName };
+    return { qty, unit, cleanName };
 }
 
 function normalizeIngredientName(cleanName) {
