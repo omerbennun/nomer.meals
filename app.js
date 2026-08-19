@@ -160,41 +160,76 @@ function resetForm() {
     document.getElementById('cancel-btn').classList.add('hidden');
 }
 
-// --- HEBREW INGREDIENT DICTIONARY & SMART PARSER ---
+// --- SMARTER HEBREW INGREDIENT PARSER & AGGREGATOR ---
 const ingredientDictionary = {
-    "ירקות ופירות": ["עגבנייה", "עגבניות", "בצל", "שום", "גזר", "מלפפון", "תפוח אדמה", "פלפל", "לימון", "לימונים", "פטרוזיליה", "כוסברה", "חסה", "קישוא", "חציל", "בטטה", "אבוקדו", "בצל ירוק", "שרי"],
+    "ירקות ופירות": ["עגבנייה", "עגבניות", "בצל", "שום", "גזר", "מלפפון", "תפוח אדמה", "פלפל", "לימון", "לימונים", "פטרוזיליה", "כוסברה", "חסה", "קישוא", "חציל", "בטטה", "אבוקדו", "סלרי", "סלק"],
     "בשר, עוף ודגים": ["בקר", "עוף", "חזה עוף", "טחינה", "סלמון", "דג", "בשר טחון", "הודו", "קציצות", "שניצל"],
     "מוצרי חלב וביצים": ["חלב", "ביצים", "ביצה", "גבינה", "חמאה", "שמנת", "יוגורט", "קוטג'", "גבינה צהובה"],
-    "מזווה ויבשים": ["פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "רסק עגבניות", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות"],
-    "תבלינים ורטבים": ["מלח", "פלפל שחור", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"]
+    "מזווה ויבשים": ["פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "רסק עגבניות", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות", "חומוס", "אבקת אפיה"],
+    "תבלינים ורטבים": ["מלח", "פלפל", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"]
 };
 
+function normalizeIngredientName(rawName) {
+    let name = rawName
+        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים/g, '') // remove descriptors
+        .replace(/['"״׳]/g, '') // remove quotes
+        .trim();
+    
+    // Normalize plurals/variations to a standard canonical key for aggregation
+    if (name.includes('בצל')) return 'בצל';
+    if (name.includes('שום') || name.includes('שיני שום')) return 'שום';
+    if (name.includes('כוסברה')) return 'כוסברה';
+    if (name.includes('לימון')) return 'לימון';
+    if (name.includes('בשר טחון')) return 'בשר טחון';
+    if (name.includes('פפריקה')) return 'פפריקה';
+    if (name.includes('מלח')) return 'מלח';
+    if (name.includes('פלפל')) return 'פלפל שחור';
+    if (name.includes('שמן')) return 'שמן';
+    
+    return name;
+}
+
 function categorizeAndAggregate(rawLines) {
-    // Map categories to objects storing aggregated quantities
     const categories = {
         "ירקות ופירות": {},
         "בשר, עוף ודגים": {},
         "מוצרי חלב וביצים": {},
         "מזווה ויבשים": {},
         "תבלינים ורטבים": {},
-        "שונות (למיון ידני)": {}
+        "שונות": {}
     };
+
+    // Words/phrases that indicate an instruction sentence, not an ingredient
+    const instructionBlacklist = [
+        "לטחון", "לסנן", "להוסיף", "ללוש", "להכניס", "לרוטב", "בסיר", 
+        "נטגן", "נחמם", "נבשל", "לשפוך", "לערבב", "–", "-"
+    ];
 
     rawLines.forEach(line => {
         if (!line) return;
         
-        // Try to extract leading number if present (e.g. "2 עגבניות" -> qty: 2, name: "עגבניות")
+        // Skip if the line is actually an instruction sentence
+        if (instructionBlacklist.some(word => line.includes(word) && line.length > 15)) return;
+        if (line.startsWith('–') || line.startsWith('-') || line.includes('הוראות')) return;
+
+        // Extract leading quantity if present (e.g., "4 שיני שום", "חצי ק״ג בשר", "2 לימונים")
         let qty = 1;
-        let cleanName = line;
-        
-        const match = line.match(/^([0-9]+(?:\.[0-9]+)?|\/[0-9]+)?\s*(.*)$/);
-        if (match && match[1]) {
-            qty = parseFloat(match[1]) || 1;
-            cleanName = match[2].trim();
+        if (line.startsWith('חצי ') || line.includes('חצי ')) {
+            qty = 0.5;
+        } else if (line.startsWith('רבע ')) {
+            qty = 0.25;
+        } else {
+            const match = line.match(/^([0-9]+(?:\.[0-9]+)?)/);
+            if (match) {
+                qty = parseFloat(match[1]) || 1;
+            }
         }
 
-        // Determine category based on dictionary keywords
-        let assignedCategory = "שונות (למיון ידני)";
+        let canonicalKey = normalizeIngredientName(line);
+        if (!canonicalKey || canonicalKey.length < 2) return;
+
+        // Find category
+        let assignedCategory = "שונות";
         for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
             if (keywords.some(kw => line.includes(kw))) {
                 assignedCategory = cat;
@@ -202,12 +237,14 @@ function categorizeAndAggregate(rawLines) {
             }
         }
 
-        // Aggregate duplicates by normalized clean name
-        const key = cleanName;
-        if (categories[assignedCategory][key]) {
-            categories[assignedCategory][key] += qty;
+        // Aggregate
+        if (categories[assignedCategory][canonicalKey]) {
+            categories[assignedCategory][canonicalKey].qty += qty;
         } else {
-            categories[assignedCategory][key] = qty;
+            categories[assignedCategory][canonicalKey] = {
+                originalText: line,
+                qty: qty
+            };
         }
     });
 
