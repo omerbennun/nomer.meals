@@ -169,22 +169,77 @@ const ingredientDictionary = {
     "תבלינים ורטבים": ["מלח", "פלפל", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"]
 };
 
-function normalizeIngredientName(rawName) {
-    let name = rawName
-        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים/g, '') // remove descriptors
-        .replace(/['"״׳]/g, '') // remove quotes
+// --- HEBREW NUMBER & UNIT PARSER ---
+function parseHebrewQuantityAndUnit(line) {
+    let qty = 1;
+    let cleanName = line;
+
+    // Map Hebrew number words to values
+    const wordNumbers = {
+        'חצי': 0.5,
+        'רבע': 0.25,
+        'אחת': 1,
+        'אחד': 1,
+        'שתי': 2,
+        'שני': 2,
+        'שנים': 2,
+        'שלוש': 3,
+        'שלושה': 3,
+        'ארבע': 4,
+        'ארבעה': 4,
+        'חמש': 5,
+        'חמישה': 5,
+        'שש': 6,
+        'ששש': 6,
+        'שבע': 7,
+        'שמונה': 8,
+        'תשע': 9,
+        'עשר': 10
+    };
+
+    // Check if line starts with a number word or digit
+    const words = line.trim().split(/\s+/);
+    if (words.length > 0) {
+        const firstWord = words[0];
+        const secondWord = words[1] || '';
+
+        if (wordNumbers[firstWord] !== undefined) {
+            qty = wordNumbers[firstWord];
+            cleanName = words.slice(1).join(' ');
+        } else {
+            const numericMatch = firstWord.match(/^([0-9]+(?:\.[0-9]+)?)/);
+            if (numericMatch) {
+                qty = parseFloat(numericMatch[1]) || 1;
+                cleanName = words.slice(1).join(' ');
+            }
+        }
+    }
+
+    // Clean up units and descriptor words from the item name
+    cleanName = cleanName
+        .replace(/ק״ג|קג|גרם|מ״ל|מל|ליטר|כוסות|כוס|כפות|כף|כפיות|כפית|שיני|שן|חבילת|חבילה|צרור|קופסת|קופסה/g, '')
+        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים/g, '')
+        .replace(/['"״׳]/g, '')
         .trim();
+
+    return { qty, cleanName };
+}
+
+function normalizeIngredientName(cleanName) {
+    let name = cleanName;
     
-    // Normalize plurals/variations to a standard canonical key for aggregation
+    // Normalize aliases to a single canonical key for aggregation
     if (name.includes('בצל')) return 'בצל';
-    if (name.includes('שום') || name.includes('שיני שום')) return 'שום';
+    if (name.includes('שום')) return 'שום';
     if (name.includes('כוסברה')) return 'כוסברה';
     if (name.includes('לימון')) return 'לימון';
-    if (name.includes('בשר טחון')) return 'בשר טחון';
+    if (name.includes('בשר טחון') || name.includes('בשר בקר')) return 'בשר טחון';
     if (name.includes('פפריקה')) return 'פפריקה';
     if (name.includes('מלח')) return 'מלח';
     if (name.includes('פלפל')) return 'פלפל שחור';
     if (name.includes('שמן')) return 'שמן';
+    if (name.includes('סלק')) return 'סלק ירוק';
+    if (name.includes('חומוס')) return 'חומוס';
     
     return name;
 }
@@ -199,7 +254,6 @@ function categorizeAndAggregate(rawLines) {
         "שונות": {}
     };
 
-    // Words/phrases that indicate an instruction sentence, not an ingredient
     const instructionBlacklist = [
         "לטחון", "לסנן", "להוסיף", "ללוש", "להכניס", "לרוטב", "בסיר", 
         "נטגן", "נחמם", "נבשל", "לשפוך", "לערבב", "–", "-"
@@ -208,27 +262,16 @@ function categorizeAndAggregate(rawLines) {
     rawLines.forEach(line => {
         if (!line) return;
         
-        // Skip if the line is actually an instruction sentence
         if (instructionBlacklist.some(word => line.includes(word) && line.length > 15)) return;
         if (line.startsWith('–') || line.startsWith('-') || line.includes('הוראות')) return;
 
-        // Extract leading quantity if present (e.g., "4 שיני שום", "חצי ק״ג בשר", "2 לימונים")
-        let qty = 1;
-        if (line.startsWith('חצי ') || line.includes('חצי ')) {
-            qty = 0.5;
-        } else if (line.startsWith('רבע ')) {
-            qty = 0.25;
-        } else {
-            const match = line.match(/^([0-9]+(?:\.[0-9]+)?)/);
-            if (match) {
-                qty = parseFloat(match[1]) || 1;
-            }
-        }
-
-        let canonicalKey = normalizeIngredientName(line);
+        // Parse quantity words/units and get clean name
+        const parsed = parseHebrewQuantityAndUnit(line);
+        let canonicalKey = normalizeIngredientName(parsed.cleanName);
+        
         if (!canonicalKey || canonicalKey.length < 2) return;
 
-        // Find category
+        // Categorize based on dictionary keywords
         let assignedCategory = "שונות";
         for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
             if (keywords.some(kw => line.includes(kw))) {
@@ -237,13 +280,13 @@ function categorizeAndAggregate(rawLines) {
             }
         }
 
-        // Aggregate
+        // Aggregate quantities
         if (categories[assignedCategory][canonicalKey]) {
-            categories[assignedCategory][canonicalKey].qty += qty;
+            categories[assignedCategory][canonicalKey].qty += parsed.qty;
         } else {
             categories[assignedCategory][canonicalKey] = {
-                originalText: line,
-                qty: qty
+                originalText: parsed.cleanName,
+                qty: parsed.qty
             };
         }
     });
