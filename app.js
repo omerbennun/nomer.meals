@@ -160,7 +160,7 @@ function resetForm() {
     document.getElementById('cancel-btn').classList.add('hidden');
 }
 
-// --- UNIFIED HEBREW INGREDIENT DICTIONARY (Pantry & Spices First) ---
+// --- HEBREW INGREDIENT DICTIONARY ---
 const ingredientDictionary = {
     "מזווה ויבשים": ["רסק עגבניות", "עגבניות מרוסקות", "פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות", "חומוס", "אבקת אפיה"],
     "תבלינים ורטבים": ["פלפל שחור", "פלפל שחור גרוס", "מלח", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"],
@@ -174,32 +174,13 @@ function parseHebrewQuantityAndUnit(line) {
     let unit = '';
     let cleanName = line;
 
-    // Expanded number words including masculine/feminine variations
     const wordNumbers = {
-        'חצי': 0.5,
-        'רבע': 0.25,
-        'אחת': 1,
-        'אחד': 1,
-        'שתי': 2,
-        'שני': 2,
-        'שנים': 2,
-        'שלוש': 3,
-        'שלושה': 3,
-        'ארבע': 4,
-        'ארבעה': 4,
-        'חמש': 5,
-        'חמישה': 5,
-        'שש': 6,
-        'שישה': 6,
-        'שבע': 7,
-        'שבעה': 7,
-        'שמונה': 8,
-        'תשע': 9,
-        'עשר': 10,
-        'עשרה': 10
+        'חצי': 0.5, 'רבע': 0.25, 'אחת': 1, 'אחד': 1, 'שתי': 2, 'שני': 2, 'שנים': 2,
+        'שלוש': 3, 'שלושה': 3, 'ארבע': 4, 'ארבעה': 4, 'חמש': 5, 'חמישה': 5,
+        'שש': 6, 'שישה': 6, 'שבע': 7, 'שבעה': 7, 'שמונה': 8, 'תשע': 9, 'עשר': 10, 'עשרה': 10
     };
 
-    const knownUnits = ['ק״ג', 'קג', 'גרם', 'מ״ל', 'מל', 'ליטר', 'כוסות', 'כוס', 'כפות', 'כף', 'כפיות', 'כפית', 'שיני', 'שן', 'חבילת', 'חבילה', 'צרור', 'קופסת', 'קופסה'];
+    const knownUnits = ['ק״ג', 'ק׳ג', 'קג', 'גרם', 'מ״ל', 'מל', 'ליטר', 'כוסות', 'כוס', 'כפות', 'כף', 'כפיות', 'כפית', 'שיני', 'שן', 'חבילת', 'חבילה', 'צרור', 'קופסת', 'קופסה'];
 
     const words = line.trim().split(/\s+/);
     if (words.length > 0) {
@@ -218,36 +199,17 @@ function parseHebrewQuantityAndUnit(line) {
 
     const remainingWords = cleanName.trim().split(/\s+/);
     if (remainingWords.length > 0 && knownUnits.includes(remainingWords[0])) {
-        unit = remainingWords[0];
+        unit = remainingWords[0].replace(/['"״׳]/g, '"');
         cleanName = remainingWords.slice(1).join(' ');
     }
 
-    // Clean up descriptive modifiers and preparation notes
+    // Direct cleanup inline
     cleanName = cleanName
-        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים|לפי הטעם/g, '')
+        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים|לפי הטעם|גדול|גדולים/g, '')
         .replace(/['"״׳]/g, '')
         .trim();
 
     return { qty, unit, cleanName };
-}
-
-function normalizeIngredientName(cleanName) {
-    let name = cleanName;
-    
-    // Normalize aliases to a single canonical key for aggregation
-    if (name.includes('בצל')) return 'בצל';
-    if (name.includes('שום')) return 'שום';
-    if (name.includes('כוסברה')) return 'כוסברה';
-    if (name.includes('לימון')) return 'לימון';
-    if (name.includes('בשר טחון') || name.includes('בשר בקר')) return 'בשר טחון';
-    if (name.includes('פפריקה')) return 'פפריקה';
-    if (name.includes('מלח')) return 'מלח';
-    if (name.includes('פלפל')) return 'פלפל שחור';
-    if (name.includes('שמן')) return 'שמן';
-    if (name.includes('סלק')) return 'סלק ירוק';
-    if (name.includes('חומוס')) return 'חומוס';
-    
-    return name;
 }
 
 function categorizeAndAggregate(rawLines) {
@@ -268,7 +230,6 @@ function categorizeAndAggregate(rawLines) {
     rawLines.forEach(line => {
         if (!line) return;
         
-        // Skip headers ending with colon (e.g., "לרוטב:", "מצרכים:"), bullet dashes, or instructions
         if (line.endsWith(':') || line.startsWith('–') || line.startsWith('-')) return;
         if (instructionBlacklist.some(word => line.includes(word) && line.length > 15)) return;
 
@@ -277,7 +238,6 @@ function categorizeAndAggregate(rawLines) {
         
         if (!itemName || itemName.length < 2) return;
 
-        // Categorize based on dictionary keywords (Pantry/Spices evaluated first)
         let assignedCategory = "שונות";
         for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
             if (keywords.some(kw => line.includes(kw))) {
@@ -286,7 +246,6 @@ function categorizeAndAggregate(rawLines) {
             }
         }
 
-        // Aggregate by clean item name
         if (categories[assignedCategory][itemName]) {
             categories[assignedCategory][itemName].qty += parsed.qty;
             if (!categories[assignedCategory][itemName].unit && parsed.unit) {
