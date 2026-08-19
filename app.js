@@ -130,7 +130,7 @@ function saveMeal() {
         
         reader.readAsDataURL(file);
     } else {
-        // Keep existing image if no new file was selected during editing
+        // Keep existing image if no new file was selected during editing   
         commitToDatabase(existingImage);
     }
 }
@@ -169,7 +169,7 @@ function resetForm() {
     document.getElementById('cancel-btn').classList.add('hidden');
 }
 
-// --- RANDOMIZER ---
+// --- RANDOMIZER & SMART SHOPPING LIST ---
 function randomizeMeals(count) {
     if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
     
@@ -177,15 +177,44 @@ function randomizeMeals(count) {
     const selected = shuffled.slice(0, count);
 
     const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML = '';
+    const shoppingListSection = document.getElementById('shopping-list-section');
+    const shoppingListItems = document.getElementById('shopping-list-items');
     
+    resultsDiv.innerHTML = '';
+    shoppingListItems.innerHTML = '';
+    
+    let allIngredients = [];
+
     selected.forEach(m => {
         let html = `<div class="meal-card">
                         <h3>${m.name}</h3>`;
-        if (m.ingredients) html += `<strong>מצרכים:</strong><br><p style="white-space: pre-wrap; margin-top:5px;">${m.ingredients}</p>`;
+        if (m.ingredients) {
+            html += `<strong>מצרכים:</strong><br><p style="white-space: pre-wrap; margin-top:5px;">${m.ingredients}</p>`;
+            
+            // Extract ingredients line by line for the shopping list
+            const lines = m.ingredients.split('\n');
+            lines.forEach(line => {
+                const cleaned = line.trim();
+                if (cleaned) allIngredients.push(cleaned);
+            });
+        }
         if (m.instructions) html += `<strong>הוראות הכנה:</strong><br><p style="white-space: pre-wrap; margin-top:5px;">${m.instructions}</p>`;
         if (m.image) html += `<img src="${m.image}" alt="${m.name}">`;
         html += `</div>`;
         resultsDiv.innerHTML += html;
     });
+
+    // Populate shopping list if ingredients exist
+    if (allIngredients.length > 0) {
+        // Remove exact duplicates if any
+        const uniqueIngredients = [...new Set(allIngredients)];
+        
+        uniqueIngredients.forEach(item => {
+            shoppingListItems.innerHTML += `<li>${item}</li>`;
+        });
+        
+        shoppingListSection.classList.remove('hidden');
+    } else {
+        shoppingListSection.classList.add('hidden');
+    }
 }
