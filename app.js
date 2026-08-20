@@ -172,7 +172,14 @@ const ingredientDictionary = {
 function parseHebrewQuantityAndUnit(line) {
     let qty = 1;
     let unit = '';
-    let cleanName = line;
+    
+    // 1. Extract anything in brackets as a note BEFORE cleaning the text
+    let notes = [];
+    let cleanName = line.replace(/\((.*?)\)/g, (match, innerText) => {
+        notes.push(`(${innerText.trim()})`);
+        return '';
+    });
+    let note = notes.join(' ');
 
     const wordNumbers = {
         'חצי': 0.5, 'רבע': 0.25, 'אחת': 1, 'אחד': 1, 'שתי': 2, 'שני': 2, 'שנים': 2,
@@ -180,9 +187,10 @@ function parseHebrewQuantityAndUnit(line) {
         'שש': 6, 'שישה': 6, 'שבע': 7, 'שבעה': 7, 'שמונה': 8, 'תשע': 9, 'עשר': 10, 'עשרה': 10
     };
 
-    const knownUnits = ['ק״ג', 'ק׳ג', 'קג', 'גרם', 'מ״ל', 'מל', 'ליטר', 'כוסות', 'כוס', 'כפות', 'כף', 'כפיות', 'כפית', 'שיני', 'שן', 'חבילת', 'חבילה', 'צרור', 'קופסת', 'קופסה'];
+    // Added 'שקית' and 'שקיות'
+    const knownUnits = ['ק״ג', 'ק׳ג', 'קג', 'גרם', 'מ״ל', 'מל', 'ליטר', 'כוסות', 'כוס', 'כפות', 'כף', 'כפיות', 'כפית', 'שיני', 'שן', 'חבילת', 'חבילה', 'צרור', 'קופסת', 'קופסה', 'שקית', 'שקיות'];
 
-    const words = line.trim().split(/\s+/);
+    const words = cleanName.trim().split(/\s+/);
     if (words.length > 0) {
         const firstWord = words[0];
         if (wordNumbers[firstWord] !== undefined) {
@@ -203,13 +211,13 @@ function parseHebrewQuantityAndUnit(line) {
         cleanName = remainingWords.slice(1).join(' ');
     }
 
-    // Direct cleanup inline
+    // Direct cleanup inline (added 'מעט' and 'גדול' so they don't mess up grouping)
     cleanName = cleanName
-        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים|לפי הטעם|גדול|גדולים/g, '')
+        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים|לפי הטעם|גדול|גדולים|מעט/g, '')
         .replace(/['"״׳]/g, '')
         .trim();
 
-    return { qty, unit, cleanName };
+    return { qty, unit, cleanName, note };
 }
 
 function categorizeAndAggregate(rawLines) {
@@ -246,16 +254,21 @@ function categorizeAndAggregate(rawLines) {
             }
         }
 
-        if (categories[assignedCategory][itemName]) {
-            categories[assignedCategory][itemName].qty += parsed.qty;
-            if (!categories[assignedCategory][itemName].unit && parsed.unit) {
-                categories[assignedCategory][itemName].unit = parsed.unit;
-            }
-        } else {
-            categories[assignedCategory][itemName] = {
-                qty: parsed.qty,
-                unit: parsed.unit
-            };
+        // Initialize the item if it doesn't exist
+        if (!categories[assignedCategory][itemName]) {
+            categories[assignedCategory][itemName] = { units: {}, note: parsed.note };
+        }
+        
+        // Track quantities by specific unit (fallback to empty string if no unit)
+        let unitKey = parsed.unit || '';
+        if (!categories[assignedCategory][itemName].units[unitKey]) {
+            categories[assignedCategory][itemName].units[unitKey] = 0;
+        }
+        categories[assignedCategory][itemName].units[unitKey] += parsed.qty;
+        
+        // Append unique notes (e.g. brackets)
+        if (parsed.note && !categories[assignedCategory][itemName].note.includes(parsed.note)) {
+            categories[assignedCategory][itemName].note += (categories[assignedCategory][itemName].note ? ' ' : '') + parsed.note;
         }
     });
 
@@ -307,13 +320,24 @@ function randomizeMeals(count) {
                             <ul style="margin: 5px 0 0 0; padding-right: 20px;">`;
             
             for (const [item, data] of Object.entries(items)) {
-                let qtyStr = '';
-                if (data.qty === 0.5) qtyStr = 'חצי ';
-                else if (data.qty === 0.25) qtyStr = 'רבע ';
-                else qtyStr = `${data.qty} `; // Prints 1, 2, 4, etc.
+                let parts = [];
+                
+                // Construct the string for each unit
+                for (const [unit, qty] of Object.entries(data.units)) {
+                    let qtyStr = '';
+                    if (qty === 0.5) qtyStr = 'חצי ';
+                    else if (qty === 0.25) qtyStr = 'רבע ';
+                    else qtyStr = `${qty} `;
 
-                const unitStr = data.unit ? `${data.unit} ` : '';
-                catHtml += `<li>${qtyStr}${unitStr}${item}</li>`;
+                    const unitStr = unit ? `${unit} ` : '';
+                    parts.push(`${qtyStr}${unitStr}`.trim());
+                }
+                
+                // Render the note (brackets) in a slightly faded color
+                const noteStr = data.note ? ` <span style="color: #888; font-size: 0.9em;">${data.note}</span>` : '';
+                
+                // Combine it all: "רבע כוס + 3 כפות שמן (או מושרה)"
+                catHtml += `<li>${parts.join(' + ')} ${item}${noteStr}</li>`;
             }
             
             catHtml += `</ul></div>`;
