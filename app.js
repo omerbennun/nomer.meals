@@ -172,14 +172,13 @@ const ingredientDictionary = {
 function parseHebrewQuantityAndUnit(line) {
     let qty = 1;
     let unit = '';
-    
-    // 1. Extract anything in brackets as a note BEFORE cleaning the text
     let notes = [];
+    
+    // 1. Extract anything in brackets as a note (removing the brackets themselves for now)
     let cleanName = line.replace(/\((.*?)\)/g, (match, innerText) => {
-        notes.push(`(${innerText.trim()})`);
+        notes.push(innerText.trim());
         return '';
     });
-    let note = notes.join(' ');
 
     const wordNumbers = {
         'חצי': 0.5, 'רבע': 0.25, 'אחת': 1, 'אחד': 1, 'שתי': 2, 'שני': 2, 'שנים': 2,
@@ -187,7 +186,6 @@ function parseHebrewQuantityAndUnit(line) {
         'שש': 6, 'שישה': 6, 'שבע': 7, 'שבעה': 7, 'שמונה': 8, 'תשע': 9, 'עשר': 10, 'עשרה': 10
     };
 
-    // Added 'שקית' and 'שקיות'
     const knownUnits = ['ק״ג', 'ק׳ג', 'קג', 'גרם', 'מ״ל', 'מל', 'ליטר', 'כוסות', 'כוס', 'כפות', 'כף', 'כפיות', 'כפית', 'שיני', 'שן', 'חבילת', 'חבילה', 'צרור', 'קופסת', 'קופסה', 'שקית', 'שקיות'];
 
     const words = cleanName.trim().split(/\s+/);
@@ -211,11 +209,22 @@ function parseHebrewQuantityAndUnit(line) {
         cleanName = remainingWords.slice(1).join(' ');
     }
 
-    // Direct cleanup inline (added 'מעט' and 'גדול' so they don't mess up grouping)
+    // 2. Find and extract descriptors BEFORE deleting them
+    const descriptorsRegex = /חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים|לפי הטעם|גדול|גדולים|מעט/g;
+    const foundDescriptors = cleanName.match(descriptorsRegex);
+    if (foundDescriptors) {
+        notes.push(...foundDescriptors);
+    }
+
+    // 3. Clean the item name by removing the descriptors and fixing extra spaces
     cleanName = cleanName
-        .replace(/חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים|לפי הטעם|גדול|גדולים|מעט/g, '')
+        .replace(descriptorsRegex, '')
         .replace(/['"״׳]/g, '')
+        .replace(/\s+/g, ' ')
         .trim();
+
+    // Join all extracted notes with a comma
+    let note = notes.filter(Boolean).join(', ');
 
     return { qty, unit, cleanName, note };
 }
@@ -236,39 +245,27 @@ function categorizeAndAggregate(rawLines) {
     ];
 
     rawLines.forEach(line => {
-        if (!line) return;
-        
-        if (line.endsWith(':') || line.startsWith('–') || line.startsWith('-')) return;
-        if (instructionBlacklist.some(word => line.includes(word) && line.length > 15)) return;
-
-        const parsed = parseHebrewQuantityAndUnit(line);
-        let itemName = parsed.cleanName;
-        
-        if (!itemName || itemName.length < 2) return;
-
-        let assignedCategory = "שונות";
-        for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
-            if (keywords.some(kw => line.includes(kw))) {
-                assignedCategory = cat;
-                break;
-            }
-        }
-
         // Initialize the item if it doesn't exist
         if (!categories[assignedCategory][itemName]) {
-            categories[assignedCategory][itemName] = { units: {}, note: parsed.note };
+            categories[assignedCategory][itemName] = { units: {}, note: '' };
         }
         
-        // Track quantities by specific unit (fallback to empty string if no unit)
         let unitKey = parsed.unit || '';
         if (!categories[assignedCategory][itemName].units[unitKey]) {
             categories[assignedCategory][itemName].units[unitKey] = 0;
         }
         categories[assignedCategory][itemName].units[unitKey] += parsed.qty;
         
-        // Append unique notes (e.g. brackets)
-        if (parsed.note && !categories[assignedCategory][itemName].note.includes(parsed.note)) {
-            categories[assignedCategory][itemName].note += (categories[assignedCategory][itemName].note ? ' ' : '') + parsed.note;
+        // Intelligently append unique notes
+        if (parsed.note) {
+            let currentNotes = categories[assignedCategory][itemName].note ? categories[assignedCategory][itemName].note.split(', ') : [];
+            let incomingNotes = parsed.note.split(', ');
+            incomingNotes.forEach(n => {
+                if (n && !currentNotes.includes(n)) {
+                    currentNotes.push(n.trim());
+                }
+            });
+            categories[assignedCategory][itemName].note = currentNotes.join(', ');
         }
     });
 
