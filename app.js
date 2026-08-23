@@ -395,9 +395,7 @@ function randomizeMeals(count) {
                 
                 // Render the note, wrapped in brackets dynamically
                 const noteStr = data.note ? ` <span style="color: #888; font-size: 0.9em;">(${data.note})</span>` : '';
-                
-                const noteStr = data.note ? ` <span style="color: #888; font-size: 0.9em;">(${data.note})</span>` : '';
-                
+                                
                 let listItemHtml = `<li>${parts.join(' + ')} ${item}${noteStr}`;
                 
                 // If it's in miscellaneous, add a dropdown to teach the app
