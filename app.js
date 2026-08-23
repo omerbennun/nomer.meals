@@ -36,20 +36,20 @@ themeToggle.addEventListener('click', () => {
 });
 
 // --- AUTHENTICATION ---
-auth.onAuthStateChanged((user) => {
+auth.onAuthStateChanged(async (user) => {
     if (user) {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
         document.getElementById('logout-btn').classList.remove('hidden');
+
+        // User is signed in, load the dictionary from Firebase
+        await loadIngredientDictionary();
+        
     } else {
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('main-app').classList.add('hidden');
         document.getElementById('logout-btn').classList.add('hidden');
     }
-
-    // User is signed in, load the dictionary from Firebase
-    await loadIngredientDictionary();
-
 });
 
 function login() {
