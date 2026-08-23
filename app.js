@@ -330,10 +330,9 @@ function randomizeMeals(count) {
                     parts.push(`${qtyStr}${unitStr}`.trim());
                 }
                 
-                // Render the note (brackets) in a slightly faded color
-                const noteStr = data.note ? ` <span style="color: #888; font-size: 0.9em;">${data.note}</span>` : '';
+                // Render the note, wrapped in brackets dynamically
+                const noteStr = data.note ? ` <span style="color: #888; font-size: 0.9em;">(${data.note})</span>` : '';
                 
-                // Combine it all: "רבע כוס + 3 כפות שמן (או מושרה)"
                 catHtml += `<li>${parts.join(' + ')} ${item}${noteStr}</li>`;
             }
             
