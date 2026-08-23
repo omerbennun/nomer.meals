@@ -46,6 +46,10 @@ auth.onAuthStateChanged((user) => {
         document.getElementById('main-app').classList.add('hidden');
         document.getElementById('logout-btn').classList.add('hidden');
     }
+
+    // User is signed in, load the dictionary from Firebase
+    await loadIngredientDictionary();
+
 });
 
 function login() {
@@ -58,6 +62,26 @@ function login() {
 }
 
 function logout() { auth.signOut(); }
+
+async function loadIngredientDictionary() {
+    const dictRef = doc(db, "settings", "ingredientDictionary");
+    const dictSnap = await getDoc(dictRef);
+
+    if (dictSnap.exists()) {
+        ingredientDictionary = dictSnap.data();
+    } else {
+        // First-time setup: uploads defaults to Firebase
+        ingredientDictionary = {
+            "מזווה ויבשים": ["רסק עגבניות", "עגבניות מרוסקות", "פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות", "חומוס", "אבקת אפיה"],
+            "תבלינים ורטבים": ["פלפל שחור", "פלפל שחור גרוס", "מלח", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"],
+            "בשר, עוף ודגים": ["בקר", "עוף", "חזה עוף", "טחינה", "סלמון", "דג", "בשר טחון", "הודו", "קציצות", "שניצל"],
+            "מוצרי חלב וביצים": ["חלב", "ביצים", "ביצה", "גבינה", "חמאה", "שמנת", "יוגורט", "קוטג'", "גבינה צהובה"],
+            "ירקות ופירות": ["עגבנייה", "עגבניות", "בצל", "שום", "גזר", "מלפפון", "תפוח אדמה", "פלפל", "לימון", "לימונים", "פטרוזיליה", "כוסברה", "חסה", "קישוא", "חציל", "בטטה", "אבוקדו", "סלרי", "סלק"],
+            "שונות": []
+        };
+        await setDoc(dictRef, ingredientDictionary);
+    }
+}
 
 // --- DATABASE LISTENER ---
 db.ref('meals').on('value', (snapshot) => {
@@ -161,13 +185,8 @@ function resetForm() {
 }
 
 // --- HEBREW INGREDIENT DICTIONARY ---
-const ingredientDictionary = {
-    "מזווה ויבשים": ["רסק עגבניות", "עגבניות מרוסקות", "פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות", "חומוס", "אבקת אפיה"],
-    "תבלינים ורטבים": ["פלפל שחור", "פלפל שחור גרוס", "מלח", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"],
-    "בשר, עוף ודגים": ["בקר", "עוף", "חזה עוף", "טחינה", "סלמון", "דג", "בשר טחון", "הודו", "קציצות", "שניצל"],
-    "מוצרי חלב וביצים": ["חלב", "ביצים", "ביצה", "גבינה", "חמאה", "שמנת", "יוגורט", "קוטג'", "גבינה צהובה"],
-    "ירקות ופירות": ["עגבנייה", "עגבניות", "בצל", "שום", "גזר", "מלפפון", "תפוח אדמה", "פלפל", "לימון", "לימונים", "פטרוזיליה", "כוסברה", "חסה", "קישוא", "חציל", "בטטה", "אבוקדו", "סלרי", "סלק"]
-};
+// Global dynamic dictionary
+let ingredientDictionary = {};
 
 function parseHebrewQuantityAndUnit(line) {
     let qty = 1;
@@ -290,6 +309,32 @@ rawLines.forEach(line => {
     return categories;
 }
 
+async function teachDictionary(itemName, newCategory) {
+    if (!newCategory) return;
+
+    try {
+        // 1. Update the local dictionary object
+        if (!ingredientDictionary[newCategory].includes(itemName)) {
+            ingredientDictionary[newCategory].push(itemName);
+        }
+
+        // 2. Save the updated array to Firebase
+        const dictRef = doc(db, "settings", "ingredientDictionary");
+        await updateDoc(dictRef, {
+            [newCategory]: ingredientDictionary[newCategory]
+        });
+
+        console.log(`Successfully mapped "${itemName}" to ${newCategory}`);
+
+        // 3. Re-generate the shopping list so it visually moves!
+        // (Call whatever function originally triggers your list aggregation, e.g., randomizeMeals() or renderShoppingList())
+        
+    } catch (error) {
+        console.error("Error updating dictionary in Firebase:", error);
+        alert("שגיאה בשמירת הקטגוריה.");
+    }
+}
+
 // --- RANDOMIZER & SMART SHOPPING LIST ---
 function randomizeMeals(count) {
     if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
@@ -351,8 +396,25 @@ function randomizeMeals(count) {
                 // Render the note, wrapped in brackets dynamically
                 const noteStr = data.note ? ` <span style="color: #888; font-size: 0.9em;">(${data.note})</span>` : '';
                 
-                catHtml += `<li>${parts.join(' + ')} ${item}${noteStr}</li>`;
-            }
+                const noteStr = data.note ? ` <span style="color: #888; font-size: 0.9em;">(${data.note})</span>` : '';
+                
+                let listItemHtml = `<li>${parts.join(' + ')} ${item}${noteStr}`;
+                
+                // If it's in miscellaneous, add a dropdown to teach the app
+                if (catName === "שונות") {
+                    const categoriesOptions = Object.keys(ingredientDictionary)
+                        .filter(c => c !== "שונות")
+                        .map(c => `<option value="${c}">${c}</option>`)
+                        .join('');
+                        
+                    listItemHtml += ` <select onchange="teachDictionary('${item}', this.value)" style="margin-right: 10px; font-size: 0.8em; padding: 2px;">
+                        <option value="">שייך לקטגוריה...</option>
+                        ${categoriesOptions}
+                    </select>`;
+                }
+                
+                listItemHtml += `</li>`;
+                catHtml += listItemHtml;            }
             
             catHtml += `</ul></div>`;
             shoppingListContainer.innerHTML += catHtml;
