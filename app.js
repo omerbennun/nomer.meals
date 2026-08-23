@@ -309,22 +309,30 @@ rawLines.forEach(line => {
     return categories;
 }
 
+let currentSelectedMeals = []; // Keeps track of currently displayed meals
+
+// --- HEBREW INGREDIENT DICTIONARY ---
 async function teachDictionary(itemName, newCategory) {
     if (!newCategory) return;
 
     try {
+        // 1. Remove the item from ALL existing categories first
+        for (const cat in ingredientDictionary) {
+            if (Array.isArray(ingredientDictionary[cat])) {
+                ingredientDictionary[cat] = ingredientDictionary[cat].filter(kw => kw !== itemName);
+            }
+        }
+
+        // 2. Add item to the new category
         if (!ingredientDictionary[newCategory]) {
             ingredientDictionary[newCategory] = [];
         }
-
-        // 1. Update local dictionary object
         if (!ingredientDictionary[newCategory].includes(itemName)) {
             ingredientDictionary[newCategory].push(itemName);
         }
 
-        // 2. Save updated dictionary to Realtime Database
+        // 3. Save updated dictionary to Realtime Database
         await db.ref('settings/ingredientDictionary').set(ingredientDictionary);
-
         console.log(`Successfully mapped "${itemName}" to ${newCategory}`);
 
     } catch (error) {
@@ -338,8 +346,12 @@ function randomizeMeals(count) {
     if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
     
     const shuffled = [...mealsArray].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, count);
+    currentSelectedMeals = shuffled.slice(0, count);
+    
+    renderSelectedMealsAndList();
+}
 
+function renderSelectedMealsAndList() {
     const resultsDiv = document.getElementById('results');
     const shoppingListSection = document.getElementById('shopping-list-section');
     const shoppingListContainer = document.getElementById('shopping-list-container');
@@ -349,7 +361,7 @@ function randomizeMeals(count) {
     
     let allRawLines = [];
 
-    selected.forEach(m => {
+    currentSelectedMeals.forEach(m => {
         let html = `<div class="meal-card">
                         <h3>${m.name}</h3>`;
         if (m.ingredients) {
@@ -380,7 +392,6 @@ function randomizeMeals(count) {
             for (const [item, data] of Object.entries(items)) {
                 let parts = [];
                 
-                // Construct the string for each unit
                 for (const [unit, qty] of Object.entries(data.units)) {
                     let qtyStr = '';
                     if (qty === 0.5) qtyStr = 'חצי ';
@@ -391,7 +402,6 @@ function randomizeMeals(count) {
                     parts.push(`${qtyStr}${unitStr}`.trim());
                 }
                 
-                // Render the note, wrapped in brackets dynamically
                 const noteStr = data.note ? ` <span style="color: #888; font-size: 0.9em;">(${data.note})</span>` : '';
 
                 let listItemHtml = `
@@ -417,9 +427,9 @@ function randomizeMeals(count) {
     }
 }
 
+// --- POPOVER RE-CATEGORIZATION LOGIC ---
 let activeRecatItem = null;
 
-// Open mini popover at button position
 function openRecatMenu(event, itemName) {
     event.stopPropagation();
     activeRecatItem = itemName;
@@ -432,14 +442,12 @@ function openRecatMenu(event, itemName) {
         document.body.appendChild(popover);
     }
 
-    // Build category buttons (excluding "שונות")
     const categories = Object.keys(ingredientDictionary).filter(c => c !== "שונות");
     popover.innerHTML = `
         <div class="popover-title">העבר קטגוריה:</div>
-        ${categories.map(c => `<button onclick="selectNewCategory('${c}')">${c}</button>`).join('')}
+        ${categories.map(c => `<button class="popover-item-btn" onclick="selectNewCategory('${c}')">${c}</button>`).join('')}
     `;
 
-    // Position popover near the clicked button
     const rect = event.target.getBoundingClientRect();
     popover.style.top = `${rect.bottom + window.scrollY + 5}px`;
     popover.style.left = `${rect.left + window.scrollX - 100}px`;
@@ -450,9 +458,8 @@ async function selectNewCategory(newCategory) {
     if (activeRecatItem) {
         await teachDictionary(activeRecatItem, newCategory);
         closeRecatMenu();
-        // Re-run randomizer to visually update the list instantly
-        const activeMealCount = document.querySelectorAll('.meal-card').length || 3;
-        randomizeMeals(activeMealCount);
+        // Re-render list instantly without picking new meals
+        renderSelectedMealsAndList();
     }
 }
 
@@ -462,7 +469,6 @@ function closeRecatMenu() {
     activeRecatItem = null;
 }
 
-// Close popover when clicking anywhere outside
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#recat-popover') && !e.target.closest('.recat-btn')) {
         closeRecatMenu();
