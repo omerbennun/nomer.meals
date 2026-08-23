@@ -393,24 +393,15 @@ function randomizeMeals(count) {
                 
                 // Render the note, wrapped in brackets dynamically
                 const noteStr = data.note ? ` <span style="color: #888; font-size: 0.9em;">(${data.note})</span>` : '';
-                                
-                let listItemHtml = `<li>${parts.join(' + ')} ${item}${noteStr}`;
-                
-                // If it's in miscellaneous, add a dropdown to teach the app
-                if (catName === "שונות") {
-                    const categoriesOptions = Object.keys(ingredientDictionary)
-                        .filter(c => c !== "שונות")
-                        .map(c => `<option value="${c}">${c}</option>`)
-                        .join('');
-                        
-                    listItemHtml += ` <select onchange="teachDictionary('${item}', this.value)" style="margin-right: 10px; font-size: 0.8em; padding: 2px;">
-                        <option value="">שייך לקטגוריה...</option>
-                        ${categoriesOptions}
-                    </select>`;
-                }
-                
-                listItemHtml += `</li>`;
-                catHtml += listItemHtml;            }
+
+                let listItemHtml = `
+                    <li class="shopping-item">
+                        <span>${parts.join(' + ')} ${item}${noteStr}</span>
+                        <button class="recat-btn" title="שנה קטגוריה" onclick="openRecatMenu(event, '${item}')">🏷️</button>
+                    </li>
+                `;
+                catHtml += listItemHtml;           
+            }
             
             catHtml += `</ul></div>`;
             shoppingListContainer.innerHTML += catHtml;
@@ -425,3 +416,55 @@ function randomizeMeals(count) {
         shoppingListSection.classList.add('hidden');
     }
 }
+
+let activeRecatItem = null;
+
+// Open mini popover at button position
+function openRecatMenu(event, itemName) {
+    event.stopPropagation();
+    activeRecatItem = itemName;
+
+    let popover = document.getElementById('recat-popover');
+    if (!popover) {
+        popover = document.createElement('div');
+        popover.id = 'recat-popover';
+        popover.className = 'recat-popover hidden';
+        document.body.appendChild(popover);
+    }
+
+    // Build category buttons (excluding "שונות")
+    const categories = Object.keys(ingredientDictionary).filter(c => c !== "שונות");
+    popover.innerHTML = `
+        <div class="popover-title">העבר קטגוריה:</div>
+        ${categories.map(c => `<button onclick="selectNewCategory('${c}')">${c}</button>`).join('')}
+    `;
+
+    // Position popover near the clicked button
+    const rect = event.target.getBoundingClientRect();
+    popover.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    popover.style.left = `${rect.left + window.scrollX - 100}px`;
+    popover.classList.remove('hidden');
+}
+
+async function selectNewCategory(newCategory) {
+    if (activeRecatItem) {
+        await teachDictionary(activeRecatItem, newCategory);
+        closeRecatMenu();
+        // Re-run randomizer to visually update the list instantly
+        const activeMealCount = document.querySelectorAll('.meal-card').length || 3;
+        randomizeMeals(activeMealCount);
+    }
+}
+
+function closeRecatMenu() {
+    const popover = document.getElementById('recat-popover');
+    if (popover) popover.classList.add('hidden');
+    activeRecatItem = null;
+}
+
+// Close popover when clicking anywhere outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#recat-popover') && !e.target.closest('.recat-btn')) {
+        closeRecatMenu();
+    }
+});

@@ -87,3 +87,66 @@ button:hover { background-color: var(--primary-hover); }
 
 .meal-card { border: 1px solid var(--border-color); padding: 20px; margin-top: 20px; border-radius: 10px; background: var(--bg-color); text-align: right; }
 .meal-card img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; }
+
+/* Clean Shopping List Item */
+.shopping-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 0;
+}
+
+.recat-btn {
+    background: none;
+    border: none;
+    opacity: 0.2;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: opacity 0.2s ease;
+    padding: 0 5px;
+}
+
+.shopping-item:hover .recat-btn {
+    opacity: 1;
+}
+
+/* Floating Popover Menu */
+.recat-popover {
+    position: absolute;
+    background: var(--bg-card, #ffffff);
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 8px;
+    padding: 8px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+}
+
+.recat-popover.hidden {
+    display: none;
+}
+
+.recat-popover .popover-title {
+    font-size: 0.75rem;
+    color: #777;
+    margin-bottom: 4px;
+    text-align: right;
+}
+
+.recat-popover button {
+    background: none;
+    border: none;
+    text-align: right;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.recat-popover button:hover {
+    background: var(--primary-light, #f0f4f8);
+    color: var(--primary, #007bff);
+}
