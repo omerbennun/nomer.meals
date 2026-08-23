@@ -244,8 +244,27 @@ function categorizeAndAggregate(rawLines) {
         "נטגן", "נחמם", "נבשל", "לשפוך", "לערבב"
     ];
 
-    rawLines.forEach(line => {
-        // Initialize the item if it doesn't exist
+rawLines.forEach(line => {
+        if (!line) return;
+        
+        if (line.endsWith(':') || line.startsWith('–') || line.startsWith('-')) return;
+        if (instructionBlacklist.some(word => line.includes(word) && line.length > 15)) return;
+
+        const parsed = parseHebrewQuantityAndUnit(line);
+        let itemName = parsed.cleanName;
+        
+        if (!itemName || itemName.length < 2) return;
+
+        // ---> THIS IS THE MISSING LINE <---
+        let assignedCategory = "שונות"; 
+        
+        for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
+            if (keywords.some(kw => line.includes(kw))) {
+                assignedCategory = cat;
+                break;
+            }
+        }
+
         if (!categories[assignedCategory][itemName]) {
             categories[assignedCategory][itemName] = { units: {}, note: '' };
         }
@@ -256,7 +275,6 @@ function categorizeAndAggregate(rawLines) {
         }
         categories[assignedCategory][itemName].units[unitKey] += parsed.qty;
         
-        // Intelligently append unique notes
         if (parsed.note) {
             let currentNotes = categories[assignedCategory][itemName].note ? categories[assignedCategory][itemName].note.split(', ') : [];
             let incomingNotes = parsed.note.split(', ');
