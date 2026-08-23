@@ -64,13 +64,13 @@ function login() {
 function logout() { auth.signOut(); }
 
 async function loadIngredientDictionary() {
-    const dictRef = db.collection("settings").doc("ingredientDictionary");
-    const dictSnap = await dictRef.get();
+    const dictRef = db.ref('settings/ingredientDictionary');
+    const snapshot = await dictRef.once('value');
 
-    if (dictSnap.exists) {
-        ingredientDictionary = dictSnap.data();
+    if (snapshot.exists()) {
+        ingredientDictionary = snapshot.val();
     } else {
-        // First-time setup: uploads defaults to Firebase
+        // First-time setup: uploads defaults to Realtime Database
         ingredientDictionary = {
             "מזווה ויבשים": ["רסק עגבניות", "עגבניות מרוסקות", "פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות", "חומוס", "אבקת אפיה"],
             "תבלינים ורטבים": ["פלפל שחור", "פלפל שחור גרוס", "מלח", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"],
@@ -313,23 +313,20 @@ async function teachDictionary(itemName, newCategory) {
     if (!newCategory) return;
 
     try {
-        // 1. Update the local dictionary object
+        if (!ingredientDictionary[newCategory]) {
+            ingredientDictionary[newCategory] = [];
+        }
+
+        // 1. Update local dictionary object
         if (!ingredientDictionary[newCategory].includes(itemName)) {
             ingredientDictionary[newCategory].push(itemName);
         }
 
-        // 2. Save the updated array to Firebase
-        const dictRef = db.collection("settings").doc("ingredientDictionary");
-        await dictRef.update({
-            [newCategory]: ingredientDictionary[newCategory]
-        });
+        // 2. Save updated dictionary to Realtime Database
+        await db.ref('settings/ingredientDictionary').set(ingredientDictionary);
 
         console.log(`Successfully mapped "${itemName}" to ${newCategory}`);
 
-        // 3. Re-render the shopping list so it visually moves
-        // (Uncomment and replace with your list generation function if you have one, e.g. randomizeMeals()):
-        // randomizeMeals();
-        
     } catch (error) {
         console.error("Error updating dictionary in Firebase:", error);
         alert("שגיאה בשמירת הקטגוריה.");
