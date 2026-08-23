@@ -64,10 +64,10 @@ function login() {
 function logout() { auth.signOut(); }
 
 async function loadIngredientDictionary() {
-    const dictRef = doc(db, "settings", "ingredientDictionary");
-    const dictSnap = await getDoc(dictRef);
+    const dictRef = db.collection("settings").doc("ingredientDictionary");
+    const dictSnap = await dictRef.get();
 
-    if (dictSnap.exists()) {
+    if (dictSnap.exists) {
         ingredientDictionary = dictSnap.data();
     } else {
         // First-time setup: uploads defaults to Firebase
@@ -79,7 +79,7 @@ async function loadIngredientDictionary() {
             "ירקות ופירות": ["עגבנייה", "עגבניות", "בצל", "שום", "גזר", "מלפפון", "תפוח אדמה", "פלפל", "לימון", "לימונים", "פטרוזיליה", "כוסברה", "חסה", "קישוא", "חציל", "בטטה", "אבוקדו", "סלרי", "סלק"],
             "שונות": []
         };
-        await setDoc(dictRef, ingredientDictionary);
+        await dictRef.set(ingredientDictionary);
     }
 }
 
@@ -319,15 +319,16 @@ async function teachDictionary(itemName, newCategory) {
         }
 
         // 2. Save the updated array to Firebase
-        const dictRef = doc(db, "settings", "ingredientDictionary");
-        await updateDoc(dictRef, {
+        const dictRef = db.collection("settings").doc("ingredientDictionary");
+        await dictRef.update({
             [newCategory]: ingredientDictionary[newCategory]
         });
 
         console.log(`Successfully mapped "${itemName}" to ${newCategory}`);
 
-        // 3. Re-generate the shopping list so it visually moves!
-        // (Call whatever function originally triggers your list aggregation, e.g., randomizeMeals() or renderShoppingList())
+        // 3. Re-render the shopping list so it visually moves
+        // (Uncomment and replace with your list generation function if you have one, e.g. randomizeMeals()):
+        // randomizeMeals();
         
     } catch (error) {
         console.error("Error updating dictionary in Firebase:", error);
