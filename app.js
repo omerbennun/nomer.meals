@@ -16,6 +16,8 @@ const db = firebase.database();
 
 let currentMeals = {};
 let mealsArray = [];
+let currentSelectedMeals = []; // Keeps track of currently displayed meals
+let ingredientDictionary = {}; // Dynamic dictionary
 
 // --- DARK MODE LOGIC ---
 const themeToggle = document.getElementById('theme-toggle');
@@ -42,9 +44,7 @@ auth.onAuthStateChanged(async (user) => {
         document.getElementById('main-app').classList.remove('hidden');
         document.getElementById('logout-btn').classList.remove('hidden');
 
-        // User is signed in, load the dictionary from Firebase
         await loadIngredientDictionary();
-        
     } else {
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('main-app').classList.add('hidden');
@@ -70,7 +70,6 @@ async function loadIngredientDictionary() {
     if (snapshot.exists()) {
         ingredientDictionary = snapshot.val();
     } else {
-        // First-time setup: uploads defaults to Realtime Database
         ingredientDictionary = {
             "מזווה ויבשים": ["רסק עגבניות", "עגבניות מרוסקות", "פסטה", "אורז", "קמח", "סוכר", "שמן", "שמן זית", "עדשים", "שעועית", "בורגול", "פירורי לחם", "שיבולת שועל", "אטריות", "חומוס", "אבקת אפיה"],
             "תבלינים ורטבים": ["פלפל שחור", "פלפל שחור גרוס", "מלח", "כמון", "פפריקה", "רוטב סויה", "חומץ", "רוטב צ'ילי", "כורכום", "אורגנו"],
@@ -111,7 +110,7 @@ db.ref('meals').on('value', (snapshot) => {
     }
 });
 
-// --- SAVE MEAL ---
+// --- SAVE / EDIT / DELETE MEALS ---
 function saveMeal() {
     const id = document.getElementById('meal-id').value;
     const name = document.getElementById('meal-name').value.trim();
@@ -184,16 +183,12 @@ function resetForm() {
     document.getElementById('cancel-btn').classList.add('hidden');
 }
 
-// --- HEBREW INGREDIENT DICTIONARY ---
-// Global dynamic dictionary
-let ingredientDictionary = {};
-
+// --- HEBREW INGREDIENT PARSER & CATEGORIZATION ---
 function parseHebrewQuantityAndUnit(line) {
     let qty = 1;
     let unit = '';
     let notes = [];
-    
-    // 1. Extract anything in brackets as a note (removing the brackets themselves for now)
+
     let cleanName = line.replace(/\((.*?)\)/g, (match, innerText) => {
         notes.push(innerText.trim());
         return '';
@@ -228,21 +223,18 @@ function parseHebrewQuantityAndUnit(line) {
         cleanName = remainingWords.slice(1).join(' ');
     }
 
-    // 2. Find and extract descriptors BEFORE deleting them
     const descriptorsRegex = /חתוך לקוביות|פרוסות|סחוטים|קצוצה|קצוץ|טרי|מושרה|שימורים|לפי הטעם|גדול|גדולים|מעט/g;
     const foundDescriptors = cleanName.match(descriptorsRegex);
     if (foundDescriptors) {
         notes.push(...foundDescriptors);
     }
 
-    // 3. Clean the item name by removing the descriptors and fixing extra spaces
     cleanName = cleanName
         .replace(descriptorsRegex, '')
         .replace(/['"״׳]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
 
-    // Join all extracted notes with a comma
     let note = notes.filter(Boolean).join(', ');
 
     return { qty, unit, cleanName, note };
@@ -263,9 +255,12 @@ function categorizeAndAggregate(rawLines) {
         "נטגן", "נחמם", "נבשל", "לשפוך", "לערבב"
     ];
 
-rawLines.forEach(line => {
+    // Get fractional/numeric multiplier
+    const multInput = document.getElementById('servings-multiplier');
+    const multiplier = multInput ? (parseFloat(multInput.value) || 1) : 1;
+
+    rawLines.forEach(line => {
         if (!line) return;
-        
         if (line.endsWith(':') || line.startsWith('–') || line.startsWith('-')) return;
         if (instructionBlacklist.some(word => line.includes(word) && line.length > 15)) return;
 
@@ -274,7 +269,6 @@ rawLines.forEach(line => {
         
         if (!itemName || itemName.length < 2) return;
 
-        // ---> THIS IS THE MISSING LINE <---
         let assignedCategory = "שונות"; 
         
         for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
@@ -292,7 +286,9 @@ rawLines.forEach(line => {
         if (!categories[assignedCategory][itemName].units[unitKey]) {
             categories[assignedCategory][itemName].units[unitKey] = 0;
         }
-        categories[assignedCategory][itemName].units[unitKey] += parsed.qty;
+
+        // Apply fractional multiplier
+        categories[assignedCategory][itemName].units[unitKey] += (parsed.qty * multiplier);
         
         if (parsed.note) {
             let currentNotes = categories[assignedCategory][itemName].note ? categories[assignedCategory][itemName].note.split(', ') : [];
@@ -309,21 +305,18 @@ rawLines.forEach(line => {
     return categories;
 }
 
-let currentSelectedMeals = []; // Keeps track of currently displayed meals
-
-// --- HEBREW INGREDIENT DICTIONARY ---
 async function teachDictionary(itemName, newCategory) {
     if (!newCategory) return;
 
     try {
-        // 1. Remove the item from ALL existing categories first
+        // 1. Remove from all existing categories
         for (const cat in ingredientDictionary) {
             if (Array.isArray(ingredientDictionary[cat])) {
                 ingredientDictionary[cat] = ingredientDictionary[cat].filter(kw => kw !== itemName);
             }
         }
 
-        // 2. Add item to the new category
+        // 2. Add to new category
         if (!ingredientDictionary[newCategory]) {
             ingredientDictionary[newCategory] = [];
         }
@@ -331,7 +324,7 @@ async function teachDictionary(itemName, newCategory) {
             ingredientDictionary[newCategory].push(itemName);
         }
 
-        // 3. Save updated dictionary to Realtime Database
+        // 3. Save to Firebase
         await db.ref('settings/ingredientDictionary').set(ingredientDictionary);
         console.log(`Successfully mapped "${itemName}" to ${newCategory}`);
 
@@ -341,16 +334,34 @@ async function teachDictionary(itemName, newCategory) {
     }
 }
 
-// --- RANDOMIZER & SMART SHOPPING LIST ---
+// --- RANDOMIZER WITH PANTRY INGREDIENT FILTER ---
 function randomizeMeals(count) {
     if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
-    
-    const shuffled = [...mealsArray].sort(() => 0.5 - Math.random());
+
+    const filterText = document.getElementById('pantry-filter')?.value.trim().toLowerCase() || '';
+    let pool = [...mealsArray];
+
+    if (filterText) {
+        const keywords = filterText.split(',').map(k => k.trim()).filter(Boolean);
+        if (keywords.length > 0) {
+            pool = pool.filter(meal => {
+                const ingredientsText = (meal.ingredients || '').toLowerCase();
+                return keywords.some(kw => ingredientsText.includes(kw));
+            });
+        }
+    }
+
+    if (pool.length === 0) {
+        return alert("לא נמצאו ארוחות המכילות את המצרכים שצוינו.");
+    }
+
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
     currentSelectedMeals = shuffled.slice(0, count);
-    
+
     renderSelectedMealsAndList();
 }
 
+// --- RENDER MEALS & SHOPPING LIST ---
 function renderSelectedMealsAndList() {
     const resultsDiv = document.getElementById('results');
     const shoppingListSection = document.getElementById('shopping-list-section');
@@ -396,7 +407,7 @@ function renderSelectedMealsAndList() {
                     let qtyStr = '';
                     if (qty === 0.5) qtyStr = 'חצי ';
                     else if (qty === 0.25) qtyStr = 'רבע ';
-                    else qtyStr = `${qty} `;
+                    else qtyStr = `${parseFloat(qty.toFixed(2))} `;
 
                     const unitStr = unit ? `${unit} ` : '';
                     parts.push(`${qtyStr}${unitStr}`.trim());
@@ -406,7 +417,9 @@ function renderSelectedMealsAndList() {
 
                 let listItemHtml = `
                     <li class="shopping-item">
-                        <span>${parts.join(' + ')} ${item}${noteStr}</span>
+                        <span onclick="this.classList.toggle('completed')" style="cursor: pointer;">
+                            ${parts.join(' + ')} ${item}${noteStr}
+                        </span>
                         <button class="recat-btn" title="שנה קטגוריה" onclick="openRecatMenu(event, '${item}')">🏷️</button>
                     </li>
                 `;
@@ -425,6 +438,36 @@ function renderSelectedMealsAndList() {
     } else {
         shoppingListSection.classList.add('hidden');
     }
+}
+
+// --- EXPORT TO WHATSAPP & CLIPBOARD ---
+function generateFormattedTextList() {
+    const container = document.getElementById('shopping-list-container');
+    let text = "🛒 *רשימת קניות*\n\n";
+    
+    container.querySelectorAll('div').forEach(catDiv => {
+        const catTitle = catDiv.querySelector('strong')?.innerText;
+        if (!catTitle) return;
+        text += `*${catTitle}*\n`;
+        
+        catDiv.querySelectorAll('li.shopping-item span').forEach(item => {
+            text += `• ${item.innerText.trim()}\n`;
+        });
+        text += '\n';
+    });
+    return text.trim();
+}
+
+function shareToWhatsApp() {
+    const text = generateFormattedTextList();
+    if (!text) return alert("רשימת הקניות ריקה.");
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+function copyShoppingList() {
+    const text = generateFormattedTextList();
+    if (!text) return alert("רשימת הקניות ריקה.");
+    navigator.clipboard.writeText(text).then(() => alert("רשימת הקניות הועתקה!"));
 }
 
 // --- POPOVER RE-CATEGORIZATION LOGIC ---
@@ -458,7 +501,6 @@ async function selectNewCategory(newCategory) {
     if (activeRecatItem) {
         await teachDictionary(activeRecatItem, newCategory);
         closeRecatMenu();
-        // Re-render list instantly without picking new meals
         renderSelectedMealsAndList();
     }
 }

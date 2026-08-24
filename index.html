@@ -33,7 +33,20 @@
         <!-- Randomizer Section -->
         <div class="card">
             <h2>הגרלת ארוחות</h2>
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; align-items: flex-end;">
+                <div>
+                    <label for="servings-multiplier" style="display: block; font-size: 0.9em; margin-bottom: 4px;">מכפיל מנות/כמות:</label>
+                    <input type="number" id="servings-multiplier" value="1" min="0.1" step="any" oninput="renderSelectedMealsAndList()" style="width: 100px; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+                </div>
+
+                <div style="flex-grow: 1; min-width: 220px;">
+                    <label for="pantry-filter" style="display: block; font-size: 0.9em; margin-bottom: 4px;">יש בבית (סנן לפי מצרכים):</label>
+                    <input type="text" id="pantry-filter" placeholder="לדוגמה: עוף, אורז (מופרד בפסיקים)" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
                 <button onclick="randomizeMeals(1)">הגרל ארוחה 1</button>
                 <button onclick="randomizeMeals(3)">הגרל 3 ארוחות</button>
                 <button onclick="randomizeMeals(5)">הגרל 5 ארוחות</button>
@@ -41,10 +54,14 @@
             
             <div id="results"></div>
 
-            <!-- Make sure this ID matches: shopping-list-container -->
             <div id="shopping-list-section" class="hidden" style="margin-top: 20px; padding: 20px; background: var(--bg-color); border-radius: 8px; border: 1px dashed var(--border-color);">
                 <h3 style="margin-top:0;">🛒 רשימת קניות מסודרת לפי קטגוריות:</h3>
                 <div id="shopping-list-container"></div>
+                
+                <div class="shopping-actions" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button onclick="shareToWhatsApp()" class="whatsapp-btn" style="background-color: #25D366; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer;">📱 שלח ל-WhatsApp</button>
+                    <button onclick="copyShoppingList()" class="copy-btn" style="padding: 8px 14px; border-radius: 4px; cursor: pointer;">📋 העתק לרשימה</button>
+                </div>
             </div>
         </div>
 
