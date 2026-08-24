@@ -270,11 +270,15 @@ function categorizeAndAggregate(rawLines) {
         if (!itemName || itemName.length < 2) return;
 
         let assignedCategory = "שונות"; 
-        
+        let longestMatchLength = 0;
+
         for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
-            if (keywords.some(kw => line.includes(kw))) {
-                assignedCategory = cat;
-                break;
+            if (!Array.isArray(keywords)) continue;
+            for (const kw of keywords) {
+                if (line.includes(kw) && kw.length > longestMatchLength) {
+                    longestMatchLength = kw.length;
+                    assignedCategory = cat;
+                }
             }
         }
 
