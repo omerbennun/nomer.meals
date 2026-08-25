@@ -33,7 +33,15 @@ function generateOfficialPlan(presetCount) {
     if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
     
     const countInput = document.getElementById('plan-count');
-    const count = presetCount || (countInput ? parseInt(countInput.value) : 3);
+    let count = presetCount || (countInput ? parseInt(countInput.value, 10) : 3);
+
+    // Force integer range strictly between 1 and 3
+    if (isNaN(count) || count < 1) count = 1;
+    if (count > 3) {
+        count = 3;
+        if (countInput) countInput.value = 3; // Reset input field to 3 if exceeded
+    }
+    
     const filterInput = document.getElementById('plan-filter');
     const filter = filterInput ? filterInput.value : '';
     

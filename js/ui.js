@@ -19,7 +19,7 @@ function renderOfficialPlan() {
             <div class="meal-card" style="border-right: 4px solid var(--primary, #007bff);">
                 <div class="meal-card-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h3>${m.name}</h3>
-                    <span class="scoreboard-badge">🏆 Scoreboard: ${cookCount} בישולים</span>
+                    <span class="scoreboard-badge">🏆 ${cookCount} בישולים</span>
                 </div>
                 ${imageHtml}
                 ${m.ingredients ? `<strong>מצרכים:</strong><p style="white-space: pre-wrap;">${m.ingredients}</p>` : ''}
@@ -104,7 +104,7 @@ function renderSandboxResults() {
             <div class="meal-card" style="background: var(--card-bg);">
                 <div class="meal-card-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h3>${m.name}</h3>
-                    <span class="scoreboard-badge">🏆 Scoreboard: ${cookCount}</span>
+                    <span class="scoreboard-badge">🏆 ${cookCount} בישולים</span>
                 </div>
                 ${imageHtml}
                 ${m.ingredients ? `<strong>מצרכים:</strong><p style="white-space: pre-wrap;">${m.ingredients}</p>` : ''}
@@ -199,7 +199,7 @@ function renderLibrary() {
     if (!lib) return;
     lib.innerHTML = mealsArray.map(m => `
         <div class="meal-list-item">
-            <strong>${m.name} <small class="scoreboard-badge">🏆 Scoreboard: ${m.cookCount || 0} בישולים</small></strong>
+            <strong>${m.name} <small class="scoreboard-badge">🏆 ${m.cookCount || 0} בישולים</small></strong>
             <div>
                 <button onclick="editMeal('${m.id}')">ערוך</button>
                 <button class="danger-btn" onclick="deleteMeal('${m.id}')">מחק</button>
@@ -282,4 +282,18 @@ function copyShoppingList(containerId) {
     const text = generateFormattedTextList(containerId);
     if (!text) return alert("רשימת הקניות ריקה.");
     navigator.clipboard.writeText(text).then(() => alert("הועתק!")); 
+}
+
+// --- TAB NAVIGATION ---
+function switchTab(tabId) {
+    // 1. Hide all elements that have the 'tab-content' class
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+    });
+    
+    // 2. Show the specific tab the user clicked
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) {
+        targetTab.classList.remove('hidden');
+    }
 }
