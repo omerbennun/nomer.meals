@@ -285,11 +285,12 @@ function copyShoppingList(containerId) {
 }
 
 // --- TAB NAVIGATION ---
-function switchTab(tabId) {
-    // 1. Hide all tab content sections and remove active state
+function switchTab(tabId, event) {
+    // 1. Hide all tab content sections
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
         tab.classList.add('hidden');
+        tab.style.display = 'none';
     });
 
     // 2. Remove active state from all navigation buttons
@@ -297,19 +298,23 @@ function switchTab(tabId) {
         btn.classList.remove('active');
     });
 
-    // 3. Activate the selected tab container
+    // 3. Show and activate the targeted tab container
     const targetTab = document.getElementById(tabId);
     if (targetTab) {
         targetTab.classList.add('active');
         targetTab.classList.remove('hidden');
+        targetTab.style.display = 'block';
     }
 
-    // 4. Highlight the clicked button
-    if (window.event && window.event.currentTarget) {
-        window.event.currentTarget.classList.add('active');
+    // 4. Highlight the active button
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    } else {
+        const activeBtn = document.querySelector(`.tab-btn[onclick*="${tabId}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
     }
 
-    // 5. Re-render views when switching tabs
+    // 5. Force re-render of components when switching
     if (tabId === 'tab-library' && typeof renderLibrary === 'function') {
         renderLibrary();
     }
