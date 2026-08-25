@@ -94,5 +94,5 @@ function randomizeSandbox(count) {
     const results = shuffled.slice(0, count);
     
     const container = document.getElementById('sandbox-results');
-    container.innerHTML = results.map(m => `<div class="meal-card" style="background:#f9f9f9;"><h3>${m.name}</h3></div>`).join('');
+    container.innerHTML = results.map(m => `<div class="meal-card" style="background: var(--card-bg);"><h3>${m.name}</h3></div>`).join('');
 }

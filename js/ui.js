@@ -123,11 +123,41 @@ function resetForm() {
 }
 
 // --- THEME & EXPORT ---
-document.getElementById('theme-toggle').addEventListener('click', function() {
-    document.body.toggleAttribute('data-theme', 'dark');
-    this.innerText = document.body.hasAttribute('data-theme') ? '☀️' : '🌙';
-});
 
+// Theme Helper Functions
+function applyTheme(theme) {
+    const themeToggle = document.getElementById('theme-toggle');
+    if (theme === 'dark') {
+        document.body.setAttribute('data-theme', 'dark');
+        if (themeToggle) themeToggle.innerText = '☀️';
+    } else {
+        document.body.removeAttribute('data-theme');
+        if (themeToggle) themeToggle.innerText = '🌙';
+    }
+}
+
+// Initial Theme Load (runs automatically)
+const savedTheme = localStorage.getItem('theme');
+const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+    applyTheme('dark');
+} else {
+    applyTheme('light');
+}
+
+// Click Listener for Toggle Button
+const themeToggle = document.getElementById('theme-toggle');
+if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const newTheme = isDark ? 'light' : 'dark';
+        localStorage.setItem('theme', newTheme);
+        applyTheme(newTheme);
+    });
+}
+
+// Export Functions
 function generateFormattedTextList() {
     const container = document.getElementById('shopping-list-container');
     let text = "🛒 *רשימת קניות*\n\n";
@@ -140,5 +170,15 @@ function generateFormattedTextList() {
     });
     return text.trim();
 }
-function shareToWhatsApp() { window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(generateFormattedTextList())}`); }
-function copyShoppingList() { navigator.clipboard.writeText(generateFormattedTextList()).then(() => alert("הועתק!")); }
+
+function shareToWhatsApp() { 
+    const text = generateFormattedTextList();
+    if (!text) return alert("רשימת הקניות ריקה.");
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank'); 
+}
+
+function copyShoppingList() { 
+    const text = generateFormattedTextList();
+    if (!text) return alert("רשימת הקניות ריקה.");
+    navigator.clipboard.writeText(text).then(() => alert("הועתק!")); 
+}
