@@ -286,14 +286,39 @@ function copyShoppingList(containerId) {
 
 // --- TAB NAVIGATION ---
 function switchTab(tabId) {
-    // 1. Hide all elements that have the 'tab-content' class
+    // 1. Hide all tab content sections and remove active state
     document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
         tab.classList.add('hidden');
     });
-    
-    // 2. Show the specific tab the user clicked
+
+    // 2. Remove active state from all navigation buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // 3. Activate the selected tab container
     const targetTab = document.getElementById(tabId);
     if (targetTab) {
+        targetTab.classList.add('active');
         targetTab.classList.remove('hidden');
     }
+
+    // 4. Highlight the clicked button
+    if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('active');
+    }
+
+    // 5. Re-render views when switching tabs
+    if (tabId === 'tab-library' && typeof renderLibrary === 'function') {
+        renderLibrary();
+    }
+    if (tabId === 'tab-official' && typeof renderOfficialPlan === 'function') {
+        renderOfficialPlan();
+    }
+}
+
+// Ensure library renders immediately if data is already loaded
+if (typeof mealsArray !== 'undefined' && mealsArray.length > 0) {
+    if (typeof renderLibrary === 'function') renderLibrary();
 }
