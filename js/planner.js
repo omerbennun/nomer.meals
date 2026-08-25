@@ -9,7 +9,6 @@ function selectMealsByTier(count, filterText, currentBoardIds) {
         pool = pool.filter(meal => keywords.some(kw => (meal.ingredients || '').toLowerCase().includes(kw)));
     }
 
-    // Group by cookCount tier
     const tiers = {};
     pool.forEach(meal => {
         const c = meal.cookCount || 0;
@@ -17,17 +16,12 @@ function selectMealsByTier(count, filterText, currentBoardIds) {
         tiers[c].push(meal);
     });
 
-    // Sort tiers lowest to highest
     const sortedTierKeys = Object.keys(tiers).map(Number).sort((a, b) => a - b);
     
     let selected = [];
     for (const key of sortedTierKeys) {
         if (selected.length >= count) break;
-        
-        // Shuffle the current tier randomly
         const shuffledTier = tiers[key].sort(() => 0.5 - Math.random());
-        
-        // Take as many as we need from this tier
         const needed = count - selected.length;
         selected.push(...shuffledTier.slice(0, needed));
     }
@@ -35,13 +29,15 @@ function selectMealsByTier(count, filterText, currentBoardIds) {
 }
 
 // --- OFFICIAL PLAN ACTIONS ---
-function generateOfficialPlan() {
+function generateOfficialPlan(presetCount) {
     if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
     
-    const count = parseInt(document.getElementById('plan-count').value) || 3;
-    const filter = document.getElementById('plan-filter').value;
+    const countInput = document.getElementById('plan-count');
+    const count = presetCount || (countInput ? parseInt(countInput.value) : 3);
+    const filterInput = document.getElementById('plan-filter');
+    const filter = filterInput ? filterInput.value : '';
     
-    sessionDeclinedIds = []; // Reset limbo on fresh generation
+    sessionDeclinedIds = []; 
     const chosen = selectMealsByTier(count, filter, []);
     
     if (chosen.length < count && filter) {
@@ -52,20 +48,21 @@ function generateOfficialPlan() {
 }
 
 function swapMeal(mealIdToSwap) {
-    sessionDeclinedIds.push(mealIdToSwap); // Send to limbo
+    sessionDeclinedIds.push(mealIdToSwap);
     
     const currentActiveIds = [...activePlanIds];
     const index = currentActiveIds.indexOf(mealIdToSwap);
+    const filterInput = document.getElementById('plan-filter');
+    const filter = filterInput ? filterInput.value : '';
     
-    // Request 1 replacement meal, excluding the current board
-    const replacement = selectMealsByTier(1, document.getElementById('plan-filter').value, currentActiveIds);
+    const replacement = selectMealsByTier(1, filter, currentActiveIds);
     
     if (replacement.length > 0) {
         currentActiveIds[index] = replacement[0].id;
         db.ref('activePlan').set(currentActiveIds);
     } else {
         alert("אין יותר ארוחות פנויות במאגר להחלפה!");
-        sessionDeclinedIds = sessionDeclinedIds.filter(id => id !== mealIdToSwap); // Release from limbo if failed
+        sessionDeclinedIds = sessionDeclinedIds.filter(id => id !== mealIdToSwap);
     }
 }
 
@@ -73,26 +70,44 @@ async function finishPlan() {
     if (activePlanIds.length === 0) return;
     if (!confirm("האם לארכב את השבוע הנוכחי? פעולה זו תעדכן את היסטוריית הבישולים.")) return;
 
-    // Increment cookCount for all meals currently on board
     const updates = {};
     activePlanIds.forEach(id => {
         const meal = mealsArray.find(m => m.id === id);
-        const newCount = (meal.cookCount || 0) + 1;
+        const newCount = (meal ? meal.cookCount || 0 : 0) + 1;
         updates[`meals/${id}/cookCount`] = newCount;
     });
 
     await db.ref().update(updates);
-    await db.ref('activePlan').set([]); // Clear the board
+    await db.ref('activePlan').set([]); 
     sessionDeclinedIds = [];
     alert("השבוע הסתיים בהצלחה! הסקורבורד עודכן.");
 }
 
-// --- SANDBOX (Unaffected by tiers/counts) ---
+// --- SANDBOX GENERATOR ---
 function randomizeSandbox(count) {
-    if (mealsArray.length === 0) return;
-    const shuffled = [...mealsArray].sort(() => 0.5 - Math.random());
-    const results = shuffled.slice(0, count);
-    
-    const container = document.getElementById('sandbox-results');
-    container.innerHTML = results.map(m => `<div class="meal-card" style="background: var(--card-bg);"><h3>${m.name}</h3></div>`).join('');
+    if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
+
+    const filterText = document.getElementById('pantry-filter')?.value.trim().toLowerCase() || '';
+    let pool = [...mealsArray];
+
+    if (filterText) {
+        const keywords = filterText.split(',').map(k => k.trim()).filter(Boolean);
+        if (keywords.length > 0) {
+            pool = pool.filter(meal => {
+                const ingredientsText = (meal.ingredients || '').toLowerCase();
+                return keywords.some(kw => ingredientsText.includes(kw));
+            });
+        }
+    }
+
+    if (pool.length === 0) {
+        return alert("לא נמצאו ארוחות המכילות את המצרכים שצוינו.");
+    }
+
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    currentSandboxMeals = shuffled.slice(0, count);
+
+    if (typeof renderSandboxResults === 'function') {
+        renderSandboxResults();
+    }
 }
