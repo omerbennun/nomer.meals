@@ -25,7 +25,7 @@ function renderOfficialPlan() {
                 ${m.ingredients ? `<strong>מצרכים:</strong><p style="white-space: pre-wrap;">${m.ingredients}</p>` : ''}
                 ${m.instructions ? `<strong>הוראות הכנה:</strong><p style="white-space: pre-wrap;">${m.instructions}</p>` : ''}
                 <div class="plan-actions" style="margin-top: 15px;">
-                    <button class="danger-btn" onclick="swapMeal('${m.id}')">🗑️ Discard / Swap (ללא ניקוד)</button>
+                    <button class="danger-btn" onclick="swapMeal('${m.id}')">🗑️ החלף ארוחה (ללא ניקוד)</button>
                 </div>
             </div>
         `;

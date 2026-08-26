@@ -88,7 +88,7 @@ async function finishPlan() {
     await db.ref().update(updates);
     await db.ref('activePlan').set([]); 
     sessionDeclinedIds = [];
-    alert("השבוע הסתיים בהצלחה! הסקורבורד עודכן.");
+    alert("השבוע הסתיים בהצלחה! מדד הבישולים עודכן.");
 }
 
 // --- SANDBOX GENERATOR ---

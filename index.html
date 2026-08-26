@@ -32,16 +32,16 @@
 
         <!-- TAB NAVIGATION -->
         <nav class="tab-nav">
-            <button class="tab-btn active" onclick="switchTab('tab-official', event)">📅 תוכנית רשמית</button>
-            <button class="tab-btn" onclick="switchTab('tab-sandbox', event)">🎲 מחולל Sandbox</button>
-            <button class="tab-btn" onclick="switchTab('tab-library', event)">📚 ספריית ארוחות & ניהול</button>
+            <button class="tab-btn active" onclick="switchTab('tab-official', event)">📅 תוכנית שבועית</button>
+            <button class="tab-btn" onclick="switchTab('tab-sandbox', event)">🎲 מחולל ארוחות</button>
+            <button class="tab-btn" onclick="switchTab('tab-library', event)">📚 ספריית ארוחות ומדד בישולים</button>
         </nav>
 
-        <!-- VIEW 1: OFFICIAL PLAN & SCOREBOARD -->
+        <!-- VIEW 1: WEEKLY PLAN -->
         <div id="tab-official" class="tab-content active">
             <div class="card">
-                <h2>📅 תוכנית ארוחות רשמית (Official Plan)</h2>
-                <p class="text-muted">נהל את התוכנית השבועית, החלף ארוחות מבלי להעלות את ה-Scoreboard, וסמן ארוחות שבושלו.</p>
+                <h2>📅 תוכנית ארוחות שבועית</h2>
+                <p class="text-muted">נהל את התוכנית השבועית, החלף ארוחות מבלי להשפיע על מדד הבישולים, וסמן ארוחות שבושלו.</p>
                 
                 <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;">
                     <div>
@@ -52,13 +52,13 @@
                         <label for="plan-filter">סנן לפי מצרכים (אופציונלי):</label>
                         <input type="text" id="plan-filter" placeholder="לדוגמה: עוף, אורז">
                     </div>
-                    <button onclick="generateOfficialPlan()">ייצר תוכנית רשמית</button>
+                    <button onclick="generateOfficialPlan()">ייצר תוכנית שבועית</button>
                 </div>
 
                 <div id="official-plan-container"></div>
 
                 <div id="official-shopping-section" class="hidden shopping-box">
-                    <h3>🛒 רשימת קניות לתוכנית הרשמית:</h3>
+                    <h3>🛒 רשימת קניות לתוכנית השבועית:</h3>
                     <div id="official-shopping-container"></div>
                     <div class="shopping-actions">
                         <button onclick="shareToWhatsApp('official-shopping-container')" class="whatsapp-btn">📱 שלח ל-WhatsApp</button>
@@ -68,11 +68,11 @@
             </div>
         </div>
 
-        <!-- VIEW 2: SANDBOX GENERATOR -->
+        <!-- VIEW 2: MEAL GENERATOR -->
         <div id="tab-sandbox" class="tab-content hidden" style="display: none;">            
-                <div class="card">
-                <h2>🎲 Sandbox (הגרלה חופשית)</h2>
-                <p class="text-muted">הגרל ארוחות באופן ניסיוני ללא השפעה על ה-Scoreboard.</p>
+            <div class="card">
+                <h2>🎲 מחולל ארוחות (הגרלה חופשית)</h2>
+                <p class="text-muted">הגרל ארוחות באופן ניסיוני ללא השפעה על מדד הבישולים.</p>
 
                 <div class="filter-controls">
                     <div>
@@ -94,7 +94,7 @@
                 <div id="sandbox-results"></div>
 
                 <div id="sandbox-shopping-section" class="hidden shopping-box">
-                    <h3>🛒 רשימת קניות (Sandbox):</h3>
+                    <h3>🛒 רשימת קניות (מחולל ארוחות):</h3>
                     <div id="sandbox-shopping-container"></div>
                     <div class="shopping-actions">
                         <button onclick="shareToWhatsApp('sandbox-shopping-container')" class="whatsapp-btn">📱 שלח ל-WhatsApp</button>
@@ -104,7 +104,7 @@
             </div>
         </div>
 
-        <!-- VIEW 3: MEAL ADDITION & LIBRARY / SCOREBOARD -->
+        <!-- VIEW 3: MEAL LIBRARY & COOK INDEX -->
         <div id="tab-library" class="tab-content hidden" style="display: none;">
             <div class="card">
                 <h2 id="form-title">הוספת מתכון חדש</h2>
@@ -128,8 +128,8 @@
             </div>
 
             <div class="card">
-                <h2>🏆 ספריית ארוחות & Scoreboard</h2>
-                <p class="text-muted">צפייה בדירוג הארוחות, כמות הבישולים (Cook Count) ותאריך הבישול האחרון.</p>
+                <h2>🏆 ספריית ארוחות ומדד בישולים</h2>
+                <p class="text-muted">צפייה בדירוג הארוחות וכמות הבישולים (Cook Count).</p>
                 <div id="meals-library"></div>
             </div>
         </div>
