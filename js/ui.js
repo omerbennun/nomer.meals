@@ -1,3 +1,72 @@
+// --- MULTIPLIER STATE OBJECTS ---
+let officialMealMultipliers = {};
+let sandboxMealMultipliers = {};
+
+function updateMealMultiplier(mealId, value, context) {
+    const val = Math.max(0.1, parseFloat(value) || 1);
+    if (context === 'official') {
+        officialMealMultipliers[mealId] = val;
+        renderShoppingList();
+    } else if (context === 'sandbox') {
+        sandboxMealMultipliers[mealId] = val;
+        renderSandboxShoppingList();
+    }
+}
+
+// --- MULTI-MEAL AGGREGATION HELPER ---
+function aggregateMeals(mealsList, multipliersObj) {
+    const combined = {
+        "ירקות ופירות": {},
+        "בשר, עוף ודגים": {},
+        "מוצרי חלב וביצים": {},
+        "מזווה ויבשים": {},
+        "תבלינים ורטבים": {},
+        "שונות": {}
+    };
+
+    if (typeof ingredientDictionary !== 'undefined') {
+        Object.keys(ingredientDictionary).forEach(k => {
+            if (!combined[k]) combined[k] = {};
+        });
+    }
+
+    mealsList.forEach(m => {
+        if (!m.ingredients) return;
+        const mult = multipliersObj[m.id] || 1;
+        const rawLines = m.ingredients.split('\n').map(l => l.trim()).filter(Boolean);
+        const mealCat = categorizeAndAggregate(rawLines, mult);
+
+        for (const [catName, items] of Object.entries(mealCat)) {
+            if (!combined[catName]) combined[catName] = {};
+            for (const [itemName, itemData] of Object.entries(items)) {
+                if (!combined[catName][itemName]) {
+                    combined[catName][itemName] = { units: {}, note: '' };
+                }
+                // Merge scaled units
+                for (const [unit, qty] of Object.entries(itemData.units)) {
+                    combined[catName][itemName].units[unit] = (combined[catName][itemName].units[unit] || 0) + qty;
+                }
+                // Merge notes without duplicates
+                if (itemData.note) {
+                    let currentNotes = combined[catName][itemName].note 
+                        ? combined[catName][itemName].note.split(', ') 
+                        : [];
+                    let incomingNotes = itemData.note.split(', ');
+                    incomingNotes.forEach(n => {
+                        const trimmed = n.trim();
+                        if (trimmed && !currentNotes.includes(trimmed)) {
+                            currentNotes.push(trimmed);
+                        }
+                    });
+                    combined[catName][itemName].note = currentNotes.join(', ');
+                }
+            }
+        }
+    });
+
+    return combined;
+}
+
 // --- RENDER OFFICIAL PLAN ---
 function renderOfficialPlan() {
     const container = document.getElementById('official-plan-container') || document.getElementById('official-plan-results');
@@ -14,6 +83,7 @@ function renderOfficialPlan() {
     currentOfficialMeals.forEach(m => {
         const imageHtml = m.image ? `<img src="${m.image}" alt="${m.name}" class="meal-img">` : '';
         const cookCount = m.cookCount || 0;
+        const mult = officialMealMultipliers[m.id] || 1;
 
         container.innerHTML += `
             <div class="meal-card" style="border-right: 4px solid var(--primary, #007bff);">
@@ -22,6 +92,10 @@ function renderOfficialPlan() {
                     <span class="scoreboard-badge">🏆 ${cookCount} בישולים</span>
                 </div>
                 ${imageHtml}
+                <div style="margin: 10px 0; display: flex; align-items: center; gap: 10px;">
+                    <label for="mult-official-${m.id}"><strong>מכפיל מנות:</strong></label>
+                    <input type="number" id="mult-official-${m.id}" value="${mult}" min="0.5" max="10" step="0.5" style="width: 70px; padding: 4px; margin: 0;" onchange="updateMealMultiplier('${m.id}', this.value, 'official')">
+                </div>
                 ${m.ingredients ? `<strong>מצרכים:</strong><p style="white-space: pre-wrap;">${m.ingredients}</p>` : ''}
                 ${m.instructions ? `<strong>הוראות הכנה:</strong><p style="white-space: pre-wrap;">${m.instructions}</p>` : ''}
                 <div class="plan-actions" style="margin-top: 15px;">
@@ -46,14 +120,7 @@ function renderShoppingList() {
         return;
     }
 
-    let allRawLines = [];
-    currentOfficialMeals.forEach(m => {
-        if (m.ingredients) allRawLines.push(...m.ingredients.split('\n').map(l => l.trim()));
-    });
-
-    const multInput = document.getElementById('servings-multiplier');
-    const multiplier = multInput ? parseFloat(multInput.value) || 1 : 1;
-    const categorized = categorizeAndAggregate(allRawLines, multiplier);
+    const categorized = aggregateMeals(currentOfficialMeals, officialMealMultipliers);
     let hasItems = false;
 
     for (const [catName, items] of Object.entries(categorized)) {
@@ -99,6 +166,7 @@ function renderSandboxResults() {
     currentSandboxMeals.forEach(m => {
         const imageHtml = m.image ? `<img src="${m.image}" alt="${m.name}" class="meal-img">` : '';
         const cookCount = m.cookCount || 0;
+        const mult = sandboxMealMultipliers[m.id] || 1;
 
         container.innerHTML += `
             <div class="meal-card" style="background: var(--card-bg);">
@@ -107,6 +175,10 @@ function renderSandboxResults() {
                     <span class="scoreboard-badge">🏆 ${cookCount} בישולים</span>
                 </div>
                 ${imageHtml}
+                <div style="margin: 10px 0; display: flex; align-items: center; gap: 10px;">
+                    <label for="mult-sandbox-${m.id}"><strong>מכפיל מנות:</strong></label>
+                    <input type="number" id="mult-sandbox-${m.id}" value="${mult}" min="0.5" max="10" step="0.5" style="width: 70px; padding: 4px; margin: 0;" onchange="updateMealMultiplier('${m.id}', this.value, 'sandbox')">
+                </div>
                 ${m.ingredients ? `<strong>מצרכים:</strong><p style="white-space: pre-wrap;">${m.ingredients}</p>` : ''}
                 ${m.instructions ? `<strong>הוראות הכנה:</strong><p style="white-space: pre-wrap;">${m.instructions}</p>` : ''}
             </div>
@@ -121,19 +193,12 @@ function renderSandboxShoppingList() {
     const section = document.getElementById('sandbox-shopping-section');
     if (!container) return;
 
-    let allRawLines = [];
-    currentSandboxMeals.forEach(m => {
-        if (m.ingredients) allRawLines.push(...m.ingredients.split('\n').map(l => l.trim()));
-    });
-
-    if (allRawLines.length === 0) {
+    if (currentSandboxMeals.length === 0) {
         if (section) section.classList.add('hidden');
         return;
     }
 
-    const multInput = document.getElementById('servings-multiplier');
-    const multiplier = multInput ? parseFloat(multInput.value) || 1 : 1;
-    const categorized = categorizeAndAggregate(allRawLines, multiplier);
+    const categorized = aggregateMeals(currentSandboxMeals, sandboxMealMultipliers);
     
     container.innerHTML = '';
     let hasItems = false;
@@ -286,19 +351,16 @@ function copyShoppingList(containerId) {
 
 // --- TAB NAVIGATION ---
 function switchTab(tabId, event) {
-    // 1. Hide all tab content sections
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
         tab.classList.add('hidden');
         tab.style.display = 'none';
     });
 
-    // 2. Remove active state from all navigation buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
 
-    // 3. Show and activate the targeted tab container
     const targetTab = document.getElementById(tabId);
     if (targetTab) {
         targetTab.classList.add('active');
@@ -306,7 +368,6 @@ function switchTab(tabId, event) {
         targetTab.style.display = 'block';
     }
 
-    // 4. Highlight the active button
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     } else {
@@ -314,7 +375,6 @@ function switchTab(tabId, event) {
         if (activeBtn) activeBtn.classList.add('active');
     }
 
-    // 5. Force re-render of components when switching
     if (tabId === 'tab-library' && typeof renderLibrary === 'function') {
         renderLibrary();
     }
@@ -323,7 +383,6 @@ function switchTab(tabId, event) {
     }
 }
 
-// Ensure library renders immediately if data is already loaded
 if (typeof mealsArray !== 'undefined' && mealsArray.length > 0) {
     if (typeof renderLibrary === 'function') renderLibrary();
 }
