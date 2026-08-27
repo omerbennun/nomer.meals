@@ -20,29 +20,87 @@ let activePlanIds = [];
 let currentOfficialMeals = []; 
 let isGuestMode = false;
 
-function loginAsGuest() {
-    isGuestMode = true;
-    initGuestSession();
+// 1. PUBLIC LISTENERS (Run for everyone including guests)
+function listenToPublicData() {
+    // Listen to Meals
+    db.ref('meals').on('value', (snapshot) => {
+        const data = snapshot.val();
+        mealsArray = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+
+        // If in Guest Mode, auto-generate initial meals as soon as data arrives
+        if (isGuestMode && mealsArray.length > 0) {
+            const count = document.getElementById('sandbox-count')?.value || 3;
+            if (typeof randomizeSandbox === 'function') {
+                randomizeSandbox(count);
+            }
+        }
+
+        if (typeof renderLibrary === 'function' && !isGuestMode) {
+            renderLibrary();
+        }
+    });
+
+    // Listen to Settings / Ingredient Dictionary
+    db.ref('settings/ingredientDictionary').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data && typeof ingredientDictionary !== 'undefined') {
+            ingredientDictionary = data;
+        }
+    });
 }
 
-function initGuestSession() {
-    isGuestMode = true;
-    
-    // 1. Switch UI containers
-    const loginScreen = document.getElementById('login-screen');
-    const appContainer = document.getElementById('app-container');
-    
-    if (loginScreen) loginScreen.classList.add('hidden');
-    if (appContainer) appContainer.classList.remove('hidden');
-    
-    // 2. Fetch recipes from Firebase Realtime DB for the generator
-    if (typeof listenToMeals === 'function') {
-        listenToMeals();
-    }
+// 2. PROTECTED LISTENERS (Run ONLY when logged in)
+function listenToActivePlan() {
+    if (isGuestMode || !auth.currentUser) return;
 
-    // 3. Apply Guest UI permissions
+    db.ref('activePlan').on('value', (snapshot) => {
+        activePlanIds = snapshot.val() || [];
+        
+        // Sync full meal objects from active plan IDs
+        currentOfficialMeals = activePlanIds
+            .map(id => mealsArray.find(m => m.id === id))
+            .filter(Boolean);
+
+        if (typeof renderOfficialPlan === 'function') {
+            renderOfficialPlan();
+        }
+    });
+}
+
+// 3. AUTHENTICATION OBSERVER
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        // User is logged in
+        isGuestMode = false;
+        document.getElementById('login-screen')?.classList.add('hidden');
+        document.getElementById('app-container')?.classList.remove('hidden');
+
+        listenToPublicData();
+        listenToActivePlan();
+    } else if (!isGuestMode) {
+        // User logged out
+        document.getElementById('login-screen')?.classList.remove('hidden');
+        document.getElementById('app-container')?.classList.add('hidden');
+    }
+});
+
+// 4. GUEST MODE INITIALIZER
+function loginAsGuest() {
+    isGuestMode = true;
+
+    document.getElementById('login-screen')?.classList.add('hidden');
+    document.getElementById('app-container')?.classList.remove('hidden');
+
     if (typeof applyGuestPermissions === 'function') {
         applyGuestPermissions();
+    }
+
+    // Start listening to public meals & settings
+    listenToPublicData();
+
+    // If meals are already loaded locally, randomize immediately
+    if (mealsArray && mealsArray.length > 0) {
+        randomizeSandbox(3);
     }
 }
 

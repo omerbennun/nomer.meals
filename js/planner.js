@@ -30,6 +30,10 @@ function selectMealsByTier(count, filterText, currentBoardIds) {
 
 // --- OFFICIAL PLAN ACTIONS ---
 function generateOfficialPlan(presetCount) {
+    if (isGuestMode) {
+        return alert("פעולה זו אינה זמינה במצב אורח.");
+    }
+
     if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
     
     const countInput = document.getElementById('plan-count');
@@ -39,7 +43,7 @@ function generateOfficialPlan(presetCount) {
     if (isNaN(count) || count < 1) count = 1;
     if (count > 3) {
         count = 3;
-        if (countInput) countInput.value = 3; // Reset input field to 3 if exceeded
+        if (countInput) countInput.value = 3;
     }
     
     const filterInput = document.getElementById('plan-filter');
@@ -52,7 +56,10 @@ function generateOfficialPlan(presetCount) {
          alert(`נמצאו רק ${chosen.length} ארוחות התואמות לסינון.`);
     }
 
-    db.ref('activePlan').set(chosen.map(m => m.id));
+    db.ref('activePlan').set(chosen.map(m => m.id)).catch(err => {
+        console.error("Error setting active plan:", err);
+        alert("שגיאה בשמירת התוכנית. ודא שאתה מחובר.");
+    });
 }
 
 function swapMeal(mealIdToSwap) {
