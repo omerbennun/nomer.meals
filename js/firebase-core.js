@@ -67,55 +67,47 @@ function listenToActivePlan() {
     });
 }
 
-// 3. AUTHENTICATION OBSERVER
+// --- AUTHENTICATION OBSERVER ---
 auth.onAuthStateChanged((user) => {
     if (user) {
-        // User is logged in
         isGuestMode = false;
         document.getElementById('login-screen')?.classList.add('hidden');
-        document.getElementById('app-container')?.classList.remove('hidden');
+        document.getElementById('main-app')?.classList.remove('hidden');
+        document.getElementById('logout-btn')?.classList.remove('hidden');
 
         listenToPublicData();
         listenToActivePlan();
+        if (typeof loadIngredientDictionary === 'function') {
+            loadIngredientDictionary();
+        }
     } else if (!isGuestMode) {
-        // User logged out
         document.getElementById('login-screen')?.classList.remove('hidden');
-        document.getElementById('app-container')?.classList.add('hidden');
+        document.getElementById('main-app')?.classList.add('hidden');
+        document.getElementById('logout-btn')?.classList.add('hidden');
     }
 });
 
-// 4. GUEST MODE INITIALIZER
+// --- GUEST MODE INITIALIZER ---
 function loginAsGuest() {
     isGuestMode = true;
 
     document.getElementById('login-screen')?.classList.add('hidden');
-    document.getElementById('app-container')?.classList.remove('hidden');
+    document.getElementById('main-app')?.classList.remove('hidden');
+
+    if (typeof loadIngredientDictionary === 'function') {
+        loadIngredientDictionary();
+    }
 
     if (typeof applyGuestPermissions === 'function') {
         applyGuestPermissions();
     }
 
-    // Start listening to public meals & settings
     listenToPublicData();
 
-    // If meals are already loaded locally, randomize immediately
     if (mealsArray && mealsArray.length > 0) {
         randomizeSandbox(3);
     }
 }
-
-// --- AUTHENTICATION ---
-auth.onAuthStateChanged(async (user) => {
-    if (user) {
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
-        document.getElementById('logout-btn').classList.remove('hidden');
-        await loadIngredientDictionary();
-    } else {
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('main-app').classList.add('hidden');
-    }
-});
 
 function login() {
     const email = document.getElementById('login-email').value;
