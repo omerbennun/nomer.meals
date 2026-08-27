@@ -20,33 +20,27 @@ let activePlanIds = [];
 let currentOfficialMeals = []; 
 let isGuestMode = false;
 
-async function loginAsGuest() {
+function loginAsGuest() {
     isGuestMode = true;
-    
-    try {
-        // Attempt anonymous sign-in if enabled in your Firebase console
-        if (typeof auth !== 'undefined' && auth.signInAnonymously) {
-            await auth.signInAnonymously();
-        } else {
-            initGuestSession();
-        }
-    } catch (error) {
-        // Fallback for strict rules: run UI guest mode locally without a Firebase auth token
-        initGuestSession();
-    }
+    initGuestSession();
 }
 
 function initGuestSession() {
     isGuestMode = true;
     
-    // Hide login screen and show app container
+    // 1. Switch UI containers
     const loginScreen = document.getElementById('login-screen');
     const appContainer = document.getElementById('app-container');
     
     if (loginScreen) loginScreen.classList.add('hidden');
     if (appContainer) appContainer.classList.remove('hidden');
     
-    // Apply UI restrictions for guest mode
+    // 2. Fetch recipes from Firebase Realtime DB for the generator
+    if (typeof listenToMeals === 'function') {
+        listenToMeals();
+    }
+
+    // 3. Apply Guest UI permissions
     if (typeof applyGuestPermissions === 'function') {
         applyGuestPermissions();
     }
