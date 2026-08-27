@@ -18,6 +18,39 @@ let mealsArray = [];
 let ingredientDictionary = {};
 let activePlanIds = []; 
 let currentOfficialMeals = []; 
+let isGuestMode = false;
+
+async function loginAsGuest() {
+    isGuestMode = true;
+    
+    try {
+        // Attempt anonymous sign-in if enabled in your Firebase console
+        if (typeof auth !== 'undefined' && auth.signInAnonymously) {
+            await auth.signInAnonymously();
+        } else {
+            initGuestSession();
+        }
+    } catch (error) {
+        // Fallback for strict rules: run UI guest mode locally without a Firebase auth token
+        initGuestSession();
+    }
+}
+
+function initGuestSession() {
+    isGuestMode = true;
+    
+    // Hide login screen and show app container
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.getElementById('app-container');
+    
+    if (loginScreen) loginScreen.classList.add('hidden');
+    if (appContainer) appContainer.classList.remove('hidden');
+    
+    // Apply UI restrictions for guest mode
+    if (typeof applyGuestPermissions === 'function') {
+        applyGuestPermissions();
+    }
+}
 
 // --- AUTHENTICATION ---
 auth.onAuthStateChanged(async (user) => {

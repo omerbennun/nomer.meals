@@ -386,3 +386,35 @@ function switchTab(tabId, event) {
 if (typeof mealsArray !== 'undefined' && mealsArray.length > 0) {
     if (typeof renderLibrary === 'function') renderLibrary();
 }
+
+function applyGuestPermissions() {
+    if (!isGuestMode) return;
+
+    // Hide Plan & Library navigation buttons
+    const planTabBtn = document.querySelector('.tab-btn[onclick*="tab-official"]');
+    const libTabBtn = document.querySelector('.tab-btn[onclick*="tab-library"]');
+    
+    if (planTabBtn) planTabBtn.style.display = 'none';
+    if (libTabBtn) libTabBtn.style.display = 'none';
+
+    // Hide Plan & Library containers
+    const planTabContainer = document.getElementById('tab-official');
+    const libTabContainer = document.getElementById('tab-library');
+
+    if (planTabContainer) planTabContainer.style.display = 'none';
+    if (libTabContainer) libTabContainer.style.display = 'none';
+
+    // Switch to Meal Generator (Sandbox)
+    switchTab('tab-sandbox');
+
+    // Add guest mode notice banner
+    const header = document.querySelector('header') || document.body;
+    let badge = document.getElementById('guest-mode-badge');
+    if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'guest-mode-badge';
+        badge.style.cssText = 'background: #fff3cd; color: #856404; text-align: center; padding: 8px; border-radius: 6px; margin-bottom: 15px; font-weight: bold;';
+        badge.innerText = '👀 מצב אורח: גישה למחולל הארוחות בלבד';
+        header.insertBefore(badge, header.firstChild);
+    }
+}
