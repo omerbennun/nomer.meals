@@ -75,20 +75,43 @@ function swapMeal(mealIdToSwap) {
 }
 
 async function finishPlan() {
-    if (activePlanIds.length === 0) return;
+    if (!activePlanIds || activePlanIds.length === 0) {
+        alert("אין ארוחות פעילות בתוכנית כרגע.");
+        return;
+    }
+
     if (!confirm("האם לארכב את השבוע הנוכחי? פעולה זו תעדכן את היסטוריית הבישולים.")) return;
 
-    const updates = {};
-    activePlanIds.forEach(id => {
-        const meal = mealsArray.find(m => m.id === id);
-        const newCount = (meal ? meal.cookCount || 0 : 0) + 1;
-        updates[`meals/${id}/cookCount`] = newCount;
-    });
+    try {
+        const updates = {};
 
-    await db.ref().update(updates);
-    await db.ref('activePlan').set([]); 
-    sessionDeclinedIds = [];
-    alert("השבוע הסתיים בהצלחה! מדד הבישולים עודכן.");
+        // Increment cook count for each meal in the active plan
+        activePlanIds.forEach(id => {
+            const meal = mealsArray.find(m => m.id === id);
+            const currentCount = meal ? (meal.cookCount || 0) : 0;
+            updates[`meals/${id}/cookCount`] = currentCount + 1;
+        });
+
+        // Reset active plan in Firebase
+        updates['activePlan'] = [];
+
+        await db.ref().update(updates);
+
+        // Reset local session tracking
+        sessionDeclinedIds = [];
+        currentOfficialMeals = [];
+        officialMealMultipliers = {};
+
+        alert("השבוע הסתיים בהצלחה! מדד הבישולים עודכן.");
+
+        // Refresh UI
+        if (typeof renderOfficialPlan === 'function') renderOfficialPlan();
+        if (typeof renderLibrary === 'function') renderLibrary();
+
+    } catch (error) {
+        console.error("Error committing plan:", error);
+        alert("אירעה שגיאה בעידכון התוכנית. אנא נסה שוב.");
+    }
 }
 
 // --- SANDBOX GENERATOR ---

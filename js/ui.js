@@ -94,7 +94,7 @@ function renderOfficialPlan() {
                 ${imageHtml}
                 <div style="margin: 10px 0; display: flex; align-items: center; gap: 10px;">
                     <label for="mult-official-${m.id}"><strong>מכפיל מנות:</strong></label>
-                    <input type="number" id="mult-official-${m.id}" value="${mult}" min="0.5" max="10" step="0.5" style="width: 70px; padding: 4px; margin: 0;" onchange="updateMealMultiplier('${m.id}', this.value, 'official')">
+                    <input type="number" id="mult-official-${m.id}" value="${mult}" min="0.5" max="10" step="0.5" style="width: 70px; padding: 4px; margin: 0;" oninput="updateMealMultiplier('${m.id}', this.value, 'official')">
                 </div>
                 ${m.ingredients ? `<strong>מצרכים:</strong><p style="white-space: pre-wrap;">${m.ingredients}</p>` : ''}
                 ${m.instructions ? `<strong>הוראות הכנה:</strong><p style="white-space: pre-wrap;">${m.instructions}</p>` : ''}
@@ -177,7 +177,7 @@ function renderSandboxResults() {
                 ${imageHtml}
                 <div style="margin: 10px 0; display: flex; align-items: center; gap: 10px;">
                     <label for="mult-sandbox-${m.id}"><strong>מכפיל מנות:</strong></label>
-                    <input type="number" id="mult-sandbox-${m.id}" value="${mult}" min="0.5" max="10" step="0.5" style="width: 70px; padding: 4px; margin: 0;" onchange="updateMealMultiplier('${m.id}', this.value, 'sandbox')">
+                    <input type="number" id="mult-sandbox-${m.id}" value="${mult}" min="0.5" max="10" step="0.5" style="width: 70px; padding: 4px; margin: 0;" oninput="updateMealMultiplier('${m.id}', this.value, 'sandbox')">
                 </div>
                 ${m.ingredients ? `<strong>מצרכים:</strong><p style="white-space: pre-wrap;">${m.ingredients}</p>` : ''}
                 ${m.instructions ? `<strong>הוראות הכנה:</strong><p style="white-space: pre-wrap;">${m.instructions}</p>` : ''}
