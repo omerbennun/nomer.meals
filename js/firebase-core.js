@@ -143,7 +143,9 @@ function saveMeal() {
     const ingredients = document.getElementById('meal-ingredients').value.trim();
     const instructions = document.getElementById('meal-instructions').value.trim();
     const fileInput = document.getElementById('meal-image-file');
-    let existingImage = document.getElementById('meal-image-url').value;
+    
+    const imageInputUrl = document.getElementById('meal-image-url');
+    let existingImage = imageInputUrl ? imageInputUrl.value : '';
 
     if (!name) return alert("חובה להזין שם ארוחה.");
 
@@ -153,7 +155,6 @@ function saveMeal() {
         if (id) {
             db.ref(`meals/${id}`).update(mealData);
         } else {
-            // New meal: Inherit the current minimum cookCount to stay fair!
             const minCount = mealsArray.length > 0 ? Math.min(...mealsArray.map(m => m.cookCount)) : 0;
             mealData.cookCount = minCount;
             db.ref('meals').push(mealData);
@@ -161,11 +162,13 @@ function saveMeal() {
         resetForm();
     };
 
-    if (fileInput.files.length > 0) {
+    if (fileInput && fileInput.files.length > 0) {
         const reader = new FileReader();
         reader.onload = e => commit(e.target.result);
         reader.readAsDataURL(fileInput.files[0]);
-    } else commit(existingImage);
+    } else {
+        commit(existingImage);
+    }
 }
 
 function deleteMeal(id) {
