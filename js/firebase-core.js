@@ -123,15 +123,6 @@ function login() {
 function logout() { auth.signOut(); }
 
 // --- DB LISTENERS ---
-db.ref('meals').on('value', (snapshot) => {
-    const data = snapshot.val() || {};
-    mealsArray = Object.keys(data).map(id => ({ 
-        id, 
-        ...data[id], 
-        cookCount: data[id].cookCount || 0 // Default missing counts to 0
-    }));
-    if (typeof renderLibrary === 'function') renderLibrary();
-});
 
 db.ref('activePlan').on('value', (snapshot) => {
     activePlanIds = snapshot.val() || [];
