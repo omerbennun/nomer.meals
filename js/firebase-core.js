@@ -22,10 +22,14 @@ let isGuestMode = false;
 
 // 1. PUBLIC LISTENERS (Run for everyone including guests)
 function listenToPublicData() {
-    // Listen to Meals
+    // Listen to Meals with safe cookCount default
     db.ref('meals').on('value', (snapshot) => {
-        const data = snapshot.val();
-        mealsArray = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+        const data = snapshot.val() || {};
+        mealsArray = Object.keys(data).map(key => ({ 
+            id: key, 
+            ...data[key], 
+            cookCount: Number(data[key].cookCount) || 0 
+        }));
 
         // If in Guest Mode, auto-generate initial meals as soon as data arrives
         if (isGuestMode && mealsArray.length > 0) {
@@ -155,8 +159,9 @@ function saveMeal() {
         if (id) {
             db.ref(`meals/${id}`).update(mealData);
         } else {
-            const minCount = mealsArray.length > 0 ? Math.min(...mealsArray.map(m => m.cookCount)) : 0;
-            mealData.cookCount = minCount;
+            const validCounts = mealsArray.map(m => Number(m.cookCount)).filter(c => !isNaN(c));
+            const minCount = validCounts.length > 0 ? Math.min(...validCounts) : 0;
+            mealData.cookCount = isNaN(minCount) ? 0 : minCount;
             db.ref('meals').push(mealData);
         }
         resetForm();
