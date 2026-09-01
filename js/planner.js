@@ -1,12 +1,47 @@
 let sessionDeclinedIds = []; // Holds declined IDs until next plan reset
 
 // --- ALGORITHM: TIERED DRAW ---
+
+function stemHebrewWord(word) {
+    let w = word.trim();
+    if (!w) return '';
+    
+    // Strip plural suffixes generically
+    if (w.endsWith('ות')) w = w.slice(0, -2);
+    else if (w.endsWith('ים')) w = w.slice(0, -2);
+    
+    // Strip feminine singular endings and spelling variations (כתיב מלא/חסר)
+    if (w.endsWith('ייה')) w = w.slice(0, -3);
+    else if (w.endsWith('יה')) w = w.slice(0, -2);
+    else if (w.endsWith('ה')) w = w.slice(0, -1);
+    
+    return w;
+}
+
+function normalizeHebrewSearch(str) {
+    if (!str) return '';
+    // Tokenize text, stem every individual word, and rejoin
+    return str.toLowerCase()
+        .split(/\s+/)
+        .map(stemHebrewWord)
+        .join(' ');
+}
+
+function hebrewMatch(text, keyword) {
+    const normText = normalizeHebrewSearch(text);
+    const normKw = normalizeHebrewSearch(keyword);
+    return normText.includes(normKw);
+}
+
 function selectMealsByTier(count, filterText, currentBoardIds) {
     let pool = [...mealsArray].filter(m => !currentBoardIds.includes(m.id) && !sessionDeclinedIds.includes(m.id));
 
     if (filterText) {
         const keywords = filterText.toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
-        pool = pool.filter(meal => keywords.some(kw => (meal.ingredients || '').toLowerCase().includes(kw)));
+        pool = pool.filter(meal => {
+            const ingredientsText = (meal.ingredients || '').toLowerCase();
+            return keywords.some(kw => hebrewMatch(ingredientsText, kw));
+        });
     }
 
     const tiers = {};
