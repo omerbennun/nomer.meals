@@ -6,28 +6,27 @@ function stemHebrewWord(word) {
     let w = word.trim();
     if (!w) return '';
     
-    // Replace Hebrew final letters (אותיות סופיות) with their middle counterparts
+    // 1. Strip plural suffixes generically first (while sofit letters are intact)
+    if (w.endsWith('ות')) w = w.slice(0, -2);
+    else if (w.endsWith('ים')) w = w.slice(0, -2);
+    
+    // 2. Strip feminine singular endings and spelling variations (כתיב מלא/חסר)
+    if (w.endsWith('ייה')) w = w.slice(0, -3);
+    else if (w.endsWith('יה')) w = w.slice(0, -2);
+    else if (w.endsWith('ה')) w = w.slice(0, -1);
+    
+    // 3. Replace Hebrew final letters (אותיות סופיות) with their middle counterparts last
     w = w.replace(/ך/g, 'כ')
          .replace(/ם/g, 'מ')
          .replace(/ן/g, 'נ')
          .replace(/ף/g, 'פ')
          .replace(/ץ/g, 'צ');
     
-    // Strip plural suffixes generically
-    if (w.endsWith('ות')) w = w.slice(0, -2);
-    else if (w.endsWith('ים')) w = w.slice(0, -2);
-    
-    // Strip feminine singular endings and spelling variations (כתיב מלא/חסר)
-    if (w.endsWith('ייה')) w = w.slice(0, -3);
-    else if (w.endsWith('יה')) w = w.slice(0, -2);
-    else if (w.endsWith('ה')) w = w.slice(0, -1);
-    
     return w;
 }
 
 function normalizeHebrewSearch(str) {
     if (!str) return '';
-    // Tokenize text, stem every individual word, and rejoin
     return str.toLowerCase()
         .split(/\s+/)
         .map(stemHebrewWord)
