@@ -6,6 +6,13 @@ function stemHebrewWord(word) {
     let w = word.trim();
     if (!w) return '';
     
+    // Replace Hebrew final letters (אותיות סופיות) with their middle counterparts
+    w = w.replace(/ך/g, 'כ')
+         .replace(/ם/g, 'מ')
+         .replace(/ן/g, 'נ')
+         .replace(/ף/g, 'פ')
+         .replace(/ץ/g, 'צ');
+    
     // Strip plural suffixes generically
     if (w.endsWith('ות')) w = w.slice(0, -2);
     else if (w.endsWith('ים')) w = w.slice(0, -2);
@@ -98,22 +105,70 @@ function generateOfficialPlan(presetCount) {
 }
 
 function swapMeal(mealIdToSwap) {
-    sessionDeclinedIds.push(mealIdToSwap);
+    // 1. Temporarily add to declined
+    if (!sessionDeclinedIds.includes(mealIdToSwap)) {
+        sessionDeclinedIds.push(mealIdToSwap);
+    }
     
     const currentActiveIds = [...activePlanIds];
     const index = currentActiveIds.indexOf(mealIdToSwap);
     const filterInput = document.getElementById('plan-filter');
-    const filter = filterInput ? filterInput.value : '';
+    const filter = filterInput ? filterInput.value.trim() : '';
     
-    const replacement = selectMealsByTier(1, filter, currentActiveIds);
+    // Attempt 1: Normal selection with current filter and declined state
+    let replacement = selectMealsByTier(1, filter, currentActiveIds);
     
     if (replacement.length > 0) {
         currentActiveIds[index] = replacement[0].id;
         db.ref('activePlan').set(currentActiveIds);
-    } else {
-        alert("אין יותר ארוחות פנויות במאגר להחלפה!");
-        sessionDeclinedIds = sessionDeclinedIds.filter(id => id !== mealIdToSwap);
+        return;
     }
+    
+    // --- DIAGNOSIS & FALLBACK HANDLING ---
+    const backupDeclined = [...sessionDeclinedIds];
+    
+    // Test Scenario A: Did we just run out of options because of session declinations?
+    sessionDeclinedIds = []; // Clear temporarily
+    let replacementWithoutDeclined = selectMealsByTier(1, filter, currentActiveIds);
+    
+    if (replacementWithoutDeclined.length > 0) {
+        // Pool exhausted! Auto-reset declined list and proceed with swap
+        showToast("כל הארוחות תואמות הסינון הוצגו. האפשרויות אופסו מחדש!");
+        currentActiveIds[index] = replacementWithoutDeclined[0].id;
+        db.ref('activePlan').set(currentActiveIds);
+        return;
+    }
+    
+    // Test Scenario B: Is the active text filter blocking all remaining library meals?
+    let replacementWithoutFilterOrDeclined = selectMealsByTier(1, '', currentActiveIds);
+    
+    // Restore declined state before triggering alerts
+    sessionDeclinedIds = backupDeclined;
+    
+    if (replacementWithoutFilterOrDeclined.length > 0) {
+        // The filter is the bottleneck
+        alert(`אין ארוחות נוספות במאגר התואמות את הסינון "${filter}". נקה את שדה הסינון כדי לראות אפשרויות נוספות.`);
+    } else {
+        // Truly no other meals exist in the database library
+        alert("אין ארוחות נוספות במאגר להחלפה. הוסף מתכונים נוספים למאגר כדי לאפשר החלפות.");
+    }
+    
+    // Roll back the current meal from declined so the user isn't locked out
+    sessionDeclinedIds = sessionDeclinedIds.filter(id => id !== mealIdToSwap);
+}
+
+// Toast notification helper for smooth feedback
+function showToast(message) {
+    let toast = document.getElementById('app-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'app-toast';
+        toast.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 20px; border-radius:5px; z-index:1000; transition:opacity 0.3s; font-size: 14px;";
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.style.opacity = '1';
+    setTimeout(() => { toast.style.opacity = '0'; }, 3500);
 }
 
 async function finishPlan() {

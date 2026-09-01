@@ -184,11 +184,11 @@ function categorizeAndAggregate(rawLines, multiplier = 1) {
         let assignedCategory = "שונות"; 
         let longestMatch = "";
 
-        // Match against dictionary keywords
+        // Match against dictionary keywords using hebrewMatch for robust grouping
         for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
             if (!Array.isArray(keywords)) continue;
             for (const kw of keywords) {
-                if (line.includes(kw) && kw.length > longestMatch.length) {
+                if (hebrewMatch(line, kw) && kw.length > longestMatch.length) {
                     longestMatch = kw;
                     assignedCategory = cat;
                 }
