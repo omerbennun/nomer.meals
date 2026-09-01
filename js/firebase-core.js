@@ -31,7 +31,8 @@ function listenToPublicData() {
             cookCount: Number(data[key].cookCount) || 0 
         }));
 
-        // If in Guest Mode, auto-generate initial meals as soon as data arrives
+        syncOfficialMeals(); // <--- Re-syncs active plan once meals are loaded
+
         if (isGuestMode && mealsArray.length > 0) {
             const count = document.getElementById('sandbox-count')?.value || 3;
             if (typeof randomizeSandbox === 'function') {
@@ -53,25 +54,26 @@ function listenToPublicData() {
     });
 }
 
-// 2. PROTECTED LISTENERS (Run ONLY when logged in)
-function listenToActivePlan() {
-    if (isGuestMode || !auth.currentUser) return;
-
-    db.ref('activePlan').on('value', (snapshot) => {
-        activePlanIds = snapshot.val() || [];
-        
-        // Sync full meal objects from active plan IDs
+    // 2. PROTECTED LISTENERS (Run ONLY when logged in)
+    function syncOfficialMeals() {
         currentOfficialMeals = activePlanIds
             .map(id => mealsArray.find(m => m.id === id))
             .filter(Boolean);
 
-        if (typeof renderOfficialPlan === 'function') {
-            renderOfficialPlan();
-        }
-    });
-}
+        if (typeof renderOfficialPlan === 'function') renderOfficialPlan();
+        if (typeof renderShoppingList === 'function') renderShoppingList();
+    }
 
-// --- AUTHENTICATION OBSERVER ---
+    function listenToActivePlan() {
+        if (isGuestMode || !auth.currentUser) return;
+
+        db.ref('activePlan').on('value', (snapshot) => {
+            activePlanIds = snapshot.val() || [];
+            syncOfficialMeals();
+        });
+    }
+
+// --- AUTHENTICATION OBSERVER --- 
 auth.onAuthStateChanged((user) => {
     if (user) {
         isGuestMode = false;
@@ -121,15 +123,6 @@ function login() {
     });
 }
 function logout() { auth.signOut(); }
-
-// --- DB LISTENERS ---
-
-db.ref('activePlan').on('value', (snapshot) => {
-    activePlanIds = snapshot.val() || [];
-    currentOfficialMeals = mealsArray.filter(m => activePlanIds.includes(m.id));
-    if (typeof renderOfficialPlan === 'function') renderOfficialPlan();
-    if (typeof renderShoppingList === 'function') renderShoppingList();
-});
 
 // --- CRUD OPERATIONS ---
 function saveMeal() {
