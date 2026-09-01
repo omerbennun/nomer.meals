@@ -39,8 +39,12 @@ function hebrewMatch(text, keyword) {
     return normText.includes(normKw);
 }
 
-function selectMealsByTier(count, filterText, currentBoardIds) {
-    let pool = [...mealsArray].filter(m => !currentBoardIds.includes(m.id) && !sessionDeclinedIds.includes(m.id));
+function selectMealsByTier(count, filterText, currentBoardIds = [], ignoreDeclined = false) {
+    let pool = [...mealsArray].filter(meal => {
+        if (currentBoardIds.includes(meal.id)) return false;
+        if (!ignoreDeclined && sessionDeclinedIds.includes(meal.id)) return false;
+        return true;
+    });
 
     if (filterText) {
         const keywords = filterText.toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
@@ -214,25 +218,21 @@ async function finishPlan() {
 function randomizeSandbox(count) {
     if (mealsArray.length === 0) return alert("אין ארוחות במאגר.");
 
-    const filterText = document.getElementById('pantry-filter')?.value.trim().toLowerCase() || '';
-    let pool = [...mealsArray];
+    const filterText = document.getElementById('pantry-filter')?.value.trim() || '';
+    
+    // Use the exact same tiered selection and hebrewMatch logic as the official plan
+    const chosen = selectMealsByTier(count, filterText, [], true);
 
-    if (filterText) {
-        const keywords = filterText.split(',').map(k => k.trim()).filter(Boolean);
-        if (keywords.length > 0) {
-            pool = pool.filter(meal => {
-                const ingredientsText = (meal.ingredients || '').toLowerCase();
-                return keywords.some(kw => ingredientsText.includes(kw));
-            });
-        }
-    }
-
-    if (pool.length === 0) {
+    if (chosen.length === 0) {
         return alert("לא נמצאו ארוחות המכילות את המצרכים שצוינו.");
     }
 
-    const shuffled = [...pool].sort(() => 0.5 - Math.random());
-    currentSandboxMeals = shuffled.slice(0, count);
+    if (chosen.length < count && filterText) {
+        // Optional notice if filter results are fewer than requested count
+        console.warn(`Found only ${chosen.length} meals matching sandbox filter.`);
+    }
+
+    currentSandboxMeals = chosen;
 
     if (typeof renderSandboxResults === 'function') {
         renderSandboxResults();
