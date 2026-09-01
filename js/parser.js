@@ -46,9 +46,9 @@ async function teachDictionary(itemName, newCategory) {
 function normalizeUnit(unit) {
     if (!unit) return '';
     const clean = unit.replace(/['"״׳]/g, '').trim();
-    if (['קג', 'קילוגרם', 'ק׳ג'].includes(clean)) return 'ק״ג';
+    if (['קג', 'קילוגרם', 'ק׳ג', 'ק״ג'].includes(clean)) return 'ק״ג';
     if (['גרם', 'ג'].includes(clean)) return 'גרם';
-    if (['מל', 'מליליטר'].includes(clean)) return 'מ״ל';
+    if (['מל', 'מליליטר', 'מ״ל'].includes(clean)) return 'מ״ל';
     if (['ליטר'].includes(clean)) return 'ליטר';
     if (['כוס', 'כוסות'].includes(clean)) return 'כוס';
     if (['כף', 'כפות'].includes(clean)) return 'כף';
@@ -155,6 +155,7 @@ function parseHebrewQuantityAndUnit(line) {
     return { qty, unit, cleanName, note };
 }
 
+// --- PARSING & AGGREGATION LOGIC ---
 function categorizeAndAggregate(rawLines, multiplier = 1) {
     const categories = {
         "ירקות ופירות": {},
@@ -165,7 +166,6 @@ function categorizeAndAggregate(rawLines, multiplier = 1) {
         "שונות": {}
     };
 
-    // Ensure all dictionary categories exist in structure
     Object.keys(ingredientDictionary).forEach(k => {
         if (!categories[k]) categories[k] = {};
     });
@@ -177,14 +177,11 @@ function categorizeAndAggregate(rawLines, multiplier = 1) {
         let itemName = parsed.cleanName;
 
         if (!itemName || itemName.length < 2) return;
-
-        // Filter out instruction steps
         if (isInstructionLine(line, parsed.cleanName)) return;
 
         let assignedCategory = "שונות"; 
         let longestMatch = "";
 
-        // Match against dictionary keywords using hebrewMatch for robust grouping
         for (const [cat, keywords] of Object.entries(ingredientDictionary)) {
             if (!Array.isArray(keywords)) continue;
             for (const kw of keywords) {
@@ -195,7 +192,6 @@ function categorizeAndAggregate(rawLines, multiplier = 1) {
             }
         }
 
-        // Canonicalize name to merge identical ingredients
         if (longestMatch) {
             itemName = longestMatch;
         } else {
@@ -207,14 +203,23 @@ function categorizeAndAggregate(rawLines, multiplier = 1) {
         }
         
         let unitKey = parsed.unit || '';
+        let qty = parsed.qty;
+
+        // Convert units to common base for aggregation (kg -> grams, liters -> ml)
+        if (unitKey === 'ק״ג') {
+            qty *= 1000;
+            unitKey = 'גרם';
+        } else if (unitKey === 'ליטר') {
+            qty *= 1000;
+            unitKey = 'מ״ל';
+        }
+
         if (!categories[assignedCategory][itemName].units[unitKey]) {
             categories[assignedCategory][itemName].units[unitKey] = 0;
         }
 
-        // Apply quantity multiplier
-        categories[assignedCategory][itemName].units[unitKey] += (parsed.qty * multiplier);
+        categories[assignedCategory][itemName].units[unitKey] += (qty * multiplier);
         
-        // Merge notes without duplicates
         if (parsed.note) {
             let currentNotes = categories[assignedCategory][itemName].note 
                 ? categories[assignedCategory][itemName].note.split(', ') 
@@ -228,6 +233,21 @@ function categorizeAndAggregate(rawLines, multiplier = 1) {
             });
             categories[assignedCategory][itemName].note = currentNotes.join(', ');
         }
+    });
+
+    // Post-process units: convert base units back to large units if totals reach 1,000
+    Object.keys(categories).forEach(cat => {
+        Object.keys(categories[cat]).forEach(itemName => {
+            let units = categories[cat][itemName].units;
+            if (units['גרם'] && units['גרם'] >= 1000) {
+                units['ק״ג'] = (units['ק״ג'] || 0) + (units['גרם'] / 1000);
+                delete units['גרם'];
+            }
+            if (units['מ״ל'] && units['מ״ל'] >= 1000) {
+                units['ליטר'] = (units['ליטר'] || 0) + (units['מ״ל'] / 1000);
+                delete units['מ״ל'];
+            }
+        });
     });
 
     return categories;
